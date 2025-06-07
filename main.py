@@ -41,6 +41,8 @@ if not OPENAI_API_KEY or not DISCORD_TOKEN:
 try:
     logger.info("Initializing OpenAI client...")
     openai.api_key = OPENAI_API_KEY
+    # Set a longer timeout for API calls
+    openai.api_requestor.APIRequestor.timeout = 30
     logger.info("OpenAI client initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize OpenAI client: {str(e)}")
@@ -56,7 +58,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # --- Configuration & Global State ---
 BRIAN_SYSTEM_PROMPT = ""
 INSTRUCTIONS_FILE_NAME = "brian_instructions.txt"
-MODEL_NAME = "gpt-4o"
+MODEL_NAME = "gpt-4"
 MAX_CONTEXT_TOKENS_INPUT = 8000
 MAX_TOKENS_FOR_RESPONSE = 1500
 MAX_MESSAGE_LENGTH = 2000  # Discord's message length limit
@@ -153,34 +155,45 @@ def count_tokens(text):
 # --- Bot Events ---
 @bot.event
 async def on_ready():
-    logger.info("=== Bot Starting Up ===")
-    logger.info(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    logger.info(f"Connected to {len(bot.guilds)} guilds:")
-    for guild in bot.guilds:
-        logger.info(f"- {guild.name} (ID: {guild.id})")
-    
-    # Load personality
-    global BRIAN_SYSTEM_PROMPT
     try:
-        logger.info(f"Attempting to load instructions from '{INSTRUCTIONS_FILE_NAME}'")
-        logger.info(f"Current working directory: {os.getcwd()}")
-        logger.info(f"Directory contents: {os.listdir('.')}")
+        logger.info("=== Bot Starting Up ===")
+        logger.info(f"Logged in as {bot.user} (ID: {bot.user.id})")
+        logger.info(f"Connected to {len(bot.guilds)} guilds:")
+        for guild in bot.guilds:
+            logger.info(f"- {guild.name} (ID: {guild.id})")
         
-        with open(INSTRUCTIONS_FILE_NAME, 'r', encoding='utf-8') as f:
-            BRIAN_SYSTEM_PROMPT = f.read()
-        logger.info(f"Successfully loaded instructions from '{INSTRUCTIONS_FILE_NAME}'")
-        logger.info(f"Instructions length: {len(BRIAN_SYSTEM_PROMPT)} characters")
-        logger.info(f"First 100 characters of instructions: {BRIAN_SYSTEM_PROMPT[:100]}")
-    except FileNotFoundError:
-        logger.error(f"FATAL: Instruction file '{INSTRUCTIONS_FILE_NAME}' not found!")
-        logger.error(f"Current directory contents: {os.listdir('.')}")
-        exit()
+        # Load personality
+        global BRIAN_SYSTEM_PROMPT
+        try:
+            logger.info(f"Attempting to load instructions from '{INSTRUCTIONS_FILE_NAME}'")
+            logger.info(f"Current working directory: {os.getcwd()}")
+            logger.info(f"Directory contents: {os.listdir('.')}")
+            
+            if not os.path.exists(INSTRUCTIONS_FILE_NAME):
+                logger.error(f"File does not exist: {INSTRUCTIONS_FILE_NAME}")
+                logger.error(f"Current directory contents: {os.listdir('.')}")
+                raise FileNotFoundError(f"File not found: {INSTRUCTIONS_FILE_NAME}")
+            
+            with open(INSTRUCTIONS_FILE_NAME, 'r', encoding='utf-8') as f:
+                BRIAN_SYSTEM_PROMPT = f.read()
+            logger.info(f"Successfully loaded instructions from '{INSTRUCTIONS_FILE_NAME}'")
+            logger.info(f"Instructions length: {len(BRIAN_SYSTEM_PROMPT)} characters")
+            logger.info(f"First 100 characters of instructions: {BRIAN_SYSTEM_PROMPT[:100]}")
+        except FileNotFoundError as e:
+            logger.error(f"FATAL: Instruction file '{INSTRUCTIONS_FILE_NAME}' not found!")
+            logger.error(f"Current directory contents: {os.listdir('.')}")
+            raise
+        except Exception as e:
+            logger.error(f"FATAL: Error reading '{INSTRUCTIONS_FILE_NAME}': {str(e)}")
+            raise
+        
+        logger.info("=== Bot is ready to receive messages ===")
+        print(f"Logged in as {bot.user}. Brian is operational.")
     except Exception as e:
-        logger.error(f"FATAL: Error reading '{INSTRUCTIONS_FILE_NAME}': {str(e)}")
-        exit()
-    
-    logger.info("=== Bot is ready to receive messages ===")
-    print(f"Logged in as {bot.user}. Brian is operational.")
+        logger.error(f"FATAL ERROR in on_ready: {str(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise
 
 @bot.event
 async def on_message(message):

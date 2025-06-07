@@ -1,1 +1,1 @@
-worker: python gilmore_bot.py 
+worker: python main.py 

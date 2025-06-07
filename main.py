@@ -397,4 +397,15 @@ def check_message_length(content: str) -> bool:
     return len(content) <= MAX_MESSAGE_LENGTH
 
 if __name__ == "__main__":
+    print("=== Starting Brian Bot ===")
+    print("Checking environment variables...")
+    if not OPENAI_API_KEY:
+        print("ERROR: OPENAI_API_KEY not found!")
+    else:
+        print("OPENAI_API_KEY found")
+    if not DISCORD_TOKEN:
+        print("ERROR: DISCORD_TOKEN not found!")
+    else:
+        print("DISCORD_TOKEN found")
+    print("Starting bot...")
     bot.run(DISCORD_TOKEN)

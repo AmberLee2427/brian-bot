@@ -12,6 +12,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 import string
+from openai import OpenAI # Make sure to add this at the top with other imports
+
 
 # --- Logging Setup ---
 def setup_logging():
@@ -37,12 +39,9 @@ if not OPENAI_API_KEY or not DISCORD_TOKEN:
     logger.critical("FATAL: DISCORD_TOKEN or OPENAI_API_KEY not found in .env file!")
     exit()
 
-# Initialize OpenAI client with the older API version
 try:
     logger.info("Initializing OpenAI client...")
-    openai.api_key = OPENAI_API_KEY
-    # Set a longer timeout for API calls
-    openai.api_requestor.APIRequestor.timeout = 30
+    client = OpenAI(api_key=OPENAI_API_KEY, timeout=30)
     logger.info("OpenAI client initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize OpenAI client: {str(e)}")

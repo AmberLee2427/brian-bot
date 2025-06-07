@@ -227,7 +227,7 @@ async def on_message(message):
                         })
                 logger.info(f"Collected {len(history_messages)} messages from history")
             except Exception as e:
-                logger.error(f"Error fetching history: {e}")
+                logger.error(f"Error fetching history: {str(e)}")
 
             history_messages.reverse() # Oldest first
 
@@ -238,6 +238,10 @@ async def on_message(message):
             
             try:
                 logger.info("Sending request to OpenAI")
+                logger.info(f"Using model: {MODEL_NAME}")
+                logger.info(f"Payload length: {len(str(payload))} characters")
+                logger.info(f"System prompt length: {len(BRIAN_SYSTEM_PROMPT)} characters")
+                
                 response = openai.ChatCompletion.create(
                     model=MODEL_NAME,
                     messages=payload,
@@ -261,7 +265,7 @@ async def on_message(message):
                             # Apply the reaction to the user's triggering message
                             await message.add_reaction(emoji_to_react_with)
                         except discord.HTTPException as e:
-                            logger.warning(f"Failed to add reaction '{emoji_to_react_with}': {e}")
+                            logger.warning(f"Failed to add reaction '{emoji_to_react_with}': {str(e)}")
 
                 if final_reply_to_send: # Make sure there's something to say
                     logger.info("Sending reply to Discord")
@@ -269,7 +273,10 @@ async def on_message(message):
                     logger.info("Reply sent successfully")
 
             except Exception as e:
-                logger.error(f"OpenAI API call failed: {e}")
+                logger.error(f"OpenAI API call failed: {str(e)}")
+                logger.error(f"Full error details: {type(e).__name__}: {str(e)}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 await message.reply("I am currently experiencing an issue with my neural interface. Please try again later.")
 
 

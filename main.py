@@ -13,6 +13,51 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 import string
 
+# --- Logging Setup ---
+def setup_logging():
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler = RotatingFileHandler('logs/brian_bot.log', maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    return logger
+
+logger = setup_logging()
+
+# --- Load Environment Variables ---
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+
+# --- OpenAI & Bot Initialization ---
+if not OPENAI_API_KEY or not DISCORD_TOKEN:
+    logger.critical("FATAL: DISCORD_TOKEN or OPENAI_API_KEY not found in .env file!")
+    exit()
+
+oclient = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+intents.guilds = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# --- Configuration & Global State ---
+BRIAN_SYSTEM_PROMPT = ""
+INSTRUCTIONS_FILE_NAME = "brian_instructions.txt"
+MODEL_NAME = "gpt-4o"
+MAX_CONTEXT_TOKENS_INPUT = 8000
+MAX_TOKENS_FOR_RESPONSE = 1500
+MAX_MESSAGE_LENGTH = 2000  # Discord's message length limit
+
+# Security settings
+ALLOWED_ROLES = []  # Add role IDs that are allowed to use certain commands
+ADMIN_ROLES = []    # Add role IDs that have admin privileges
+
 # --- Rate Limiting Setup ---
 class RateLimiter:
     def __init__(self, max_requests: int, time_window: int):
@@ -64,32 +109,6 @@ def validate_channel_name(name: str) -> bool:
     """Validate channel name format."""
     # Discord channel names can only contain lowercase letters, numbers, and hyphens
     return bool(re.match(r'^[a-z0-9-]+$', name.lower()))
-
-# --- Logging Setup ---
-def setup_logging():
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    file_handler = RotatingFileHandler('logs/brian_bot.log', maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    return logger
-
-logger = setup_logging()
-
-# --- Configuration & Global State ---
-BRIAN_SYSTEM_PROMPT = ""
-INSTRUCTIONS_FILE_NAME = "brian_instructions.txt"
-MODEL_NAME = "gpt-4o"
-MAX_CONTEXT_TOKENS_INPUT = 8000
-MAX_TOKENS_FOR_RESPONSE = 1500
-MAX_MESSAGE_LENGTH = 2000  # Discord's message length limit
-
-# Security settings
-ALLOWED_ROLES = []  # Add role IDs that are allowed to use certain commands
-ADMIN_ROLES = []    # Add role IDs that have admin privileges
 
 def has_permission(member: discord.Member, required_roles: list) -> bool:
     """Check if a member has the required roles."""

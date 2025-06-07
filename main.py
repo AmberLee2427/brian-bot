@@ -37,7 +37,8 @@ if not OPENAI_API_KEY or not DISCORD_TOKEN:
     logger.critical("FATAL: DISCORD_TOKEN or OPENAI_API_KEY not found in .env file!")
     exit()
 
-oclient = openai.OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI client with the older API version
+openai.api_key = OPENAI_API_KEY
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -225,7 +226,7 @@ async def on_message(message):
             
             try:
                 logger.info("Sending request to OpenAI")
-                response = oclient.chat.completions.create(
+                response = openai.ChatCompletion.create(
                     model=MODEL_NAME,
                     messages=payload,
                     max_tokens=MAX_TOKENS_FOR_RESPONSE,
@@ -340,7 +341,7 @@ async def summarize_logic(ctx, channel_name: str):
 
         prompt = f"Summarize the key points and decisions from the following Discord conversation from the '{channel_name}' channel. Be concise and clear:\n\n{content}"
         
-        response = oclient.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model=MODEL_NAME,
             messages=[{"role": "system", "content": "You are a summarization expert."}, {"role": "user", "content": prompt}],
             max_tokens=500,

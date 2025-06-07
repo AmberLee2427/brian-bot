@@ -331,33 +331,47 @@ async def summarize_logic(ctx, channel_name: str):
         return
 
     try:
+        logger.info(f"Fetching messages from channel {channel_name}")
         messages = [msg async for msg in target_channel.history(limit=100)]
+        logger.info(f"Found {len(messages)} messages in channel {channel_name}")
+        
         content = "\n".join(f"{msg.author.display_name}: {sanitize_input(msg.content)}" 
                           for msg in messages if msg.content and not msg.author.bot)
         
         if not content:
+            logger.info(f"No content found in channel {channel_name}")
             await ctx.send(f"`#{channel_name}` has no recent text to summarize.")
             return
 
+        logger.info(f"Preparing summary for channel {channel_name}")
         prompt = f"Summarize the key points and decisions from the following Discord conversation from the '{channel_name}' channel. Be concise and clear:\n\n{content}"
         
-        response = openai.ChatCompletion.create(
-            model=MODEL_NAME,
-            messages=[{"role": "system", "content": "You are a summarization expert."}, {"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.4
-        )
-        
-        summary = response.choices[0].message.content
-        embed = discord.Embed(
-            title=f"Summary of #{target_channel.name}",
-            description=summary,
-            color=discord.Color.blue()
-        )
-        await ctx.send(embed=embed)
+        try:
+            logger.info("Sending request to OpenAI for summarization")
+            response = openai.ChatCompletion.create(
+                model=MODEL_NAME,
+                messages=[{"role": "system", "content": "You are a summarization expert."}, {"role": "user", "content": prompt}],
+                max_tokens=500,
+                temperature=0.4
+            )
+            
+            summary = response.choices[0].message.content
+            logger.info(f"Received summary from OpenAI: {summary[:100]}...")
+            
+            embed = discord.Embed(
+                title=f"Summary of #{target_channel.name}",
+                description=summary,
+                color=discord.Color.blue()
+            )
+            await ctx.send(embed=embed)
+            logger.info("Summary sent successfully")
+
+        except Exception as e:
+            logger.error(f"OpenAI API error during summarization: {str(e)}")
+            await ctx.send("I had trouble summarizing the channel. Please try again later.")
 
     except Exception as e:
-        logger.error(f"Summarize command failed for channel '{channel_name}': {e}")
+        logger.error(f"Summarize command failed for channel '{channel_name}': {str(e)}")
         await ctx.send("An error occurred while trying to summarize. Please try again later.")
 
 

@@ -254,7 +254,7 @@ async def on_message(message):
                 logger.info(f"Payload length: {len(str(payload))} characters")
                 logger.info(f"System prompt length: {len(BRIAN_SYSTEM_PROMPT)} characters")
                 
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=payload,
                     max_tokens=MAX_TOKENS_FOR_RESPONSE,

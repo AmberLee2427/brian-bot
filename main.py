@@ -38,7 +38,13 @@ if not OPENAI_API_KEY or not DISCORD_TOKEN:
     exit()
 
 # Initialize OpenAI client with the older API version
-openai.api_key = OPENAI_API_KEY
+try:
+    logger.info("Initializing OpenAI client...")
+    openai.api_key = OPENAI_API_KEY
+    logger.info("OpenAI client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+    exit()
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -156,15 +162,21 @@ async def on_ready():
     # Load personality
     global BRIAN_SYSTEM_PROMPT
     try:
+        logger.info(f"Attempting to load instructions from '{INSTRUCTIONS_FILE_NAME}'")
+        logger.info(f"Current working directory: {os.getcwd()}")
+        logger.info(f"Directory contents: {os.listdir('.')}")
+        
         with open(INSTRUCTIONS_FILE_NAME, 'r', encoding='utf-8') as f:
             BRIAN_SYSTEM_PROMPT = f.read()
         logger.info(f"Successfully loaded instructions from '{INSTRUCTIONS_FILE_NAME}'")
         logger.info(f"Instructions length: {len(BRIAN_SYSTEM_PROMPT)} characters")
+        logger.info(f"First 100 characters of instructions: {BRIAN_SYSTEM_PROMPT[:100]}")
     except FileNotFoundError:
         logger.error(f"FATAL: Instruction file '{INSTRUCTIONS_FILE_NAME}' not found!")
+        logger.error(f"Current directory contents: {os.listdir('.')}")
         exit()
     except Exception as e:
-        logger.error(f"FATAL: Error reading '{INSTRUCTIONS_FILE_NAME}': {e}")
+        logger.error(f"FATAL: Error reading '{INSTRUCTIONS_FILE_NAME}': {str(e)}")
         exit()
     
     logger.info("=== Bot is ready to receive messages ===")

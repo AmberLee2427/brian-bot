@@ -12,6 +12,8 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
 
 ## Setup
 
+### Local Development
+
 1. **Clone the Repository:**
    ```bash
    git clone https://github.com/yourusername/brian-bot.git
@@ -41,6 +43,30 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
    python main.py
    ```
 
+### Railway Deployment
+
+1. **Create a Railway Account:**
+   - Sign up at [Railway.app](https://railway.app)
+   - Install the Railway CLI (optional)
+
+2. **Deploy to Railway:**
+   - Fork this repository
+   - Create a new project in Railway
+   - Connect your GitHub repository
+   - Add the following environment variables in Railway:
+     - `DISCORD_TOKEN`
+     - `OPENAI_API_KEY`
+
+3. **Configure the Bot:**
+   - The bot will automatically deploy when you push to the main branch
+   - Monitor the deployment in the Railway dashboard
+   - Check the logs for any issues
+
+4. **Updating the Bot:**
+   - Push changes to your repository
+   - Railway will automatically redeploy
+   - Monitor the deployment status in the dashboard
+
 ## Usage
 
 * **Chat:** Mention `@Brian` in a message to start a conversation
@@ -61,7 +87,7 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
 
 1. **Bot not responding:**
    - Check if the bot is online
-   - Verify API keys in `.env`
+   - Verify API keys in `.env` or Railway environment variables
    - Check bot permissions in Discord
 
 2. **Commands not working:**
@@ -72,6 +98,12 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
 3. **Rate limiting:**
    - Wait 60 seconds before trying again
    - Contact server admin if persistent
+
+4. **Railway Deployment Issues:**
+   - Check Railway logs for errors
+   - Verify environment variables are set correctly
+   - Ensure the Procfile and runtime.txt are present
+   - Check if the build process completed successfully
 
 ## Contributing
 

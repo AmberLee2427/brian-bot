@@ -1,1 +1,1 @@
-web: python gilmore_bot.py 
+worker: python gilmore_bot.py 

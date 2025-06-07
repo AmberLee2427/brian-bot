@@ -424,15 +424,35 @@ def check_message_length(content: str) -> bool:
     return len(content) <= MAX_MESSAGE_LENGTH
 
 if __name__ == "__main__":
-    print("=== Starting Brian Bot ===")
-    print("Checking environment variables...")
-    if not OPENAI_API_KEY:
-        print("ERROR: OPENAI_API_KEY not found!")
-    else:
-        print("OPENAI_API_KEY found")
-    if not DISCORD_TOKEN:
-        print("ERROR: DISCORD_TOKEN not found!")
-    else:
-        print("DISCORD_TOKEN found")
-    print("Starting bot...")
-    bot.run(DISCORD_TOKEN)
+    try:
+        print("=== Starting Brian Bot ===")
+        print("Checking environment variables...")
+        if not OPENAI_API_KEY:
+            print("ERROR: OPENAI_API_KEY not found!")
+        else:
+            print("OPENAI_API_KEY found")
+        if not DISCORD_TOKEN:
+            print("ERROR: DISCORD_TOKEN not found!")
+        else:
+            print("DISCORD_TOKEN found")
+        
+        print("Initializing OpenAI client...")
+        try:
+            openai.api_key = OPENAI_API_KEY
+            print("OpenAI client initialized successfully")
+        except Exception as e:
+            print(f"ERROR: Failed to initialize OpenAI client: {str(e)}")
+            raise
+        
+        print("Starting bot...")
+        try:
+            bot.run(DISCORD_TOKEN)
+        except Exception as e:
+            print(f"ERROR: Bot failed to start: {str(e)}")
+            raise
+    except Exception as e:
+        print(f"FATAL ERROR: {str(e)}")
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
+        exit(1)

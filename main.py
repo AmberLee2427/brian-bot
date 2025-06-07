@@ -146,20 +146,28 @@ def count_tokens(text):
 # --- Bot Events ---
 @bot.event
 async def on_ready():
-    logger.info(f"Logged in as {bot.user}. Brian is operational.")
-    print(f"Logged in as {bot.user}. Brian is operational.")
+    logger.info("=== Bot Starting Up ===")
+    logger.info(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    logger.info(f"Connected to {len(bot.guilds)} guilds:")
+    for guild in bot.guilds:
+        logger.info(f"- {guild.name} (ID: {guild.id})")
+    
     # Load personality
     global BRIAN_SYSTEM_PROMPT
     try:
         with open(INSTRUCTIONS_FILE_NAME, 'r', encoding='utf-8') as f:
             BRIAN_SYSTEM_PROMPT = f.read()
-        logger.info(f"Successfully loaded instructions from '{INSTRUCTIONS_FILE_NAME}'.")
+        logger.info(f"Successfully loaded instructions from '{INSTRUCTIONS_FILE_NAME}'")
+        logger.info(f"Instructions length: {len(BRIAN_SYSTEM_PROMPT)} characters")
     except FileNotFoundError:
         logger.error(f"FATAL: Instruction file '{INSTRUCTIONS_FILE_NAME}' not found!")
         exit()
     except Exception as e:
         logger.error(f"FATAL: Error reading '{INSTRUCTIONS_FILE_NAME}': {e}")
         exit()
+    
+    logger.info("=== Bot is ready to receive messages ===")
+    print(f"Logged in as {bot.user}. Brian is operational.")
 
 @bot.event
 async def on_message(message):
@@ -169,18 +177,25 @@ async def on_message(message):
     # Process commands first
     await bot.process_commands(message)
 
+    # Log all messages for debugging
+    logger.info(f"Received message from {message.author.name}: {message.content}")
+
     # Respond to mentions if it's not a command
     if bot.user.mentioned_in(message) and not message.content.startswith(bot.command_prefix):
+        logger.info(f"Bot was mentioned by {message.author.name}")
+        
         # Check rate limit
         if mention_limiter.is_rate_limited(message.author.id):
+            logger.info(f"Rate limit hit for user {message.author.name}")
             await message.reply("I'm getting too many requests right now. Please wait a moment before trying again.")
             return
 
         async with message.channel.typing():
-            logger.info(f"Mention detected from {message.author.name}. Preparing response.")
+            logger.info(f"Preparing response for {message.author.name}")
             
             # Sanitize the message content
             sanitized_content = sanitize_input(message.content)
+            logger.info(f"Sanitized content: {sanitized_content}")
             
             history_messages = []
             try:
@@ -197,6 +212,7 @@ async def on_message(message):
                             "role": "user",
                             "content": f"{hist_msg.author.display_name}: {sanitize_input(hist_msg.content)}"
                         })
+                logger.info(f"Collected {len(history_messages)} messages from history")
             except Exception as e:
                 logger.error(f"Error fetching history: {e}")
 
@@ -208,6 +224,7 @@ async def on_message(message):
             ]
             
             try:
+                logger.info("Sending request to OpenAI")
                 response = oclient.chat.completions.create(
                     model=MODEL_NAME,
                     messages=payload,
@@ -216,6 +233,7 @@ async def on_message(message):
                 )
                 
                 final_reply_to_send = response.choices[0].message.content
+                logger.info(f"Received response from OpenAI: {final_reply_to_send[:100]}...")
 
                 # Check for @REACT_EMOJI command from the persona file
                 react_match = re.search(r"@REACT_EMOJI='(.*?)'", final_reply_to_send)
@@ -233,7 +251,9 @@ async def on_message(message):
                             logger.warning(f"Failed to add reaction '{emoji_to_react_with}': {e}")
 
                 if final_reply_to_send: # Make sure there's something to say
+                    logger.info("Sending reply to Discord")
                     await message.reply(final_reply_to_send)
+                    logger.info("Reply sent successfully")
 
             except Exception as e:
                 logger.error(f"OpenAI API call failed: {e}")

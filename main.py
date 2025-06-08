@@ -249,6 +249,21 @@ async def on_message(message):
                 
                 # --- Handle Secret Actions ---
                 roll_result_str = None
+                coin_action_str = None
+                
+                # Check for @COIN
+                coin_match = re.search(r"@COIN='(.*?)'", final_reply_to_send)
+                if coin_match:
+                    final_reply_to_send = final_reply_to_send.replace(coin_match.group(0), "").strip()
+                    action = coin_match.group(1).lower().strip()
+                    logger.info(f"AI wants to perform coin action: {action}")
+
+                    # Get the gameplay cog to call its methods
+                    gameplay_cog = bot.get_cog('Gameplay')
+                    if gameplay_cog:
+                        ctx = await bot.get_context(message)
+                        # We will call the main !coin command and pass the AI's action as the argument
+                        await gameplay_cog.coin.callback(gameplay_cog, ctx, args=action)
                 
                 # Check for @ROLL
                 roll_match = re.search(r"@ROLL='(.*?)'", final_reply_to_send)

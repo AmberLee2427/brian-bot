@@ -29,10 +29,138 @@ def roll_dice(dice_string):
     total = sum(rolls) + modifier
     return rolls, modifier, total
 
+async def _update_coin(self, user_id: int, amount: int, coin_type: str) -> str:
+    """Internal helper to modify a user's coin balance with currency conversion."""
+    char_file = get_character_path(user_id)
+    if not os.path.exists(char_file):
+        raise Exception("Can't find your character sheet, friend.")
+
+    # --- New Conversion Logic ---
+    conversion_rates = {'gp': 100, 'sp': 10, 'cp': 1}
+    transaction_in_cp = amount * conversion_rates[coin_type]
+
+    with open(char_file, 'r+') as f:
+        data = json.load(f)
+        currency = data.setdefault('currency', {})
+        gp = currency.setdefault('gp', 0)
+        sp = currency.setdefault('sp', 0)
+        cp = currency.setdefault('cp', 0)
+
+        # Calculate the total balance in the smallest unit (copper)
+        total_balance_in_cp = (gp * 100) + (sp * 10) + cp
+
+        # Check if there are enough funds for a withdrawal
+        if transaction_in_cp < 0 and abs(transaction_in_cp) > total_balance_in_cp:
+            raise Exception(f"You don't have enough coin for that, friend! Your total worth is only {gp}gp, {sp}sp, {cp}cp.")
+
+        # Apply the transaction
+        new_total_balance_in_cp = total_balance_in_cp + transaction_in_cp
+        
+        # Convert the new total back into gp, sp, and cp for storage
+        new_gp = new_total_balance_in_cp // 100
+        remainder = new_total_balance_in_cp % 100
+        new_sp = remainder // 10
+        new_cp = remainder % 10
+
+        # Update the data dictionary with the new normalized values
+        currency['gp'] = new_gp
+        currency['sp'] = new_sp
+        currency['cp'] = new_cp
+        
+        # Save the updated data back to the file
+        f.seek(0)
+        json.dump(data, f, indent=4)
+        f.truncate()
+    
+    action = "Added" if amount > 0 else "Removed"
+    transaction_str = f"{abs(amount)} {coin_type.upper()}"
+    new_balance_str = f"You now have **{new_gp} GP, {new_sp} SP, and {new_cp} CP**."
+    
+    return f"Okay, friend! {action} {transaction_str}. {new_balance_str}"
+
+def polish_coins(string):
+    """Polish the coin string to make it easier to parse."""
+
+    # Remove and white space
+    string = string.lower().replace(' ', '')
+
+    coin_types = ['gp', 'sp', 'cp']
+    coin_type = string[-2:]
+    coin_type = coin_type.lower()
+
+    if coin_type not in coin_types:
+        return 0, None
+    
+    # Remove and white space from the amount
+    amount = string[:-2]
+
+    # Try to convert the amount to an integer
+    try:
+        amount = int(amount)
+    except ValueError:
+        return None, 'gp'
+    
+    return amount, coin_type
 
 class Gameplay(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.command(name='coin', case_insensitive=True)
+    async def coin(self, ctx, *, args: str = None):
+        """Manages your coin purse.
+        Usage:
+        !coin -> Shows your balance.
+        !coin 10gp -> Adds 10 gold.
+        !coin -5sp -> Removes 5 silver.
+        """
+        if args is None:
+            # Show status if no arguments are given
+            char_file = get_character_path(ctx.author.id)
+            if not os.path.exists(char_file):
+                await ctx.send("Can't find your character sheet, friend.")
+                return
+
+            with open(char_file, 'r') as f:
+                data = json.load(f)
+                currency = data.get('currency', {})
+                gp = currency.get('gp', 0)
+                sp = currency.get('sp', 0)
+                cp = currency.get('cp', 0)
+
+            embed = discord.Embed(
+                title=f"{ctx.author.display_name}'s Coin Purse",
+                color=discord.Color.gold()
+            )
+            embed.add_field(name="Gold (GP)", value=f"{gp} 💰", inline=True)
+            embed.add_field(name="Silver (SP)", value=f"{sp} 🪙", inline=True)
+            embed.add_field(name="Copper (CP)", value=f"{cp}", inline=True) # Assuming no emoji for copper
+            await ctx.send(embed=embed)
+            return
+
+        # --- Argument Parsing Logic ---
+        try:
+            # Clean up the argument string
+            amount, coin_type = polish_coins(args)
+            
+            if coin_type is None:
+                await ctx.send("That not a real coin, friend. Try `gp`, `sp`, or `cp`.")
+                return
+            
+            if amount is None:
+                await ctx.send("That not a valid amount, friend. Try `10gp` or `-2sp`.")
+                return
+            
+            # Call the internal helper to do the work
+            try:
+                response_message = await self._update_coin(ctx.author.id, amount, coin_type)
+                await ctx.send(response_message)
+            except Exception as e:
+                await ctx.send(f"Error: {e}")
+
+        except (ValueError, IndexError):
+            await ctx.send("Gah! Wrong format. Try `!coin 10gp` or `!coin -2sp`.")
+
 
     @commands.command(name='roll')
     async def roll(self, ctx, *, dice_string: str):

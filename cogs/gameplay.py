@@ -9,6 +9,27 @@ import os
 def get_character_path(user_id):
     return f"characters/{user_id}.json"
 
+def roll_dice(dice_string):
+    parts = dice_string.replace(' ', '').split('d')
+    num_dice = int(parts[0]) if parts[0] else 1
+
+    modifier = 0
+    if '+' in parts[1]:
+        die_parts = parts[1].split('+')
+        die_size = int(die_parts[0])
+        modifier = int(die_parts[1])
+    elif '-' in parts[1]:
+        die_parts = parts[1].split('-')
+        die_size = int(die_parts[0])
+        modifier = -int(die_parts[1])
+    else:
+        die_size = int(parts[1])
+
+    rolls = [random.randint(1, die_size) for _ in range(num_dice)]
+    total = sum(rolls) + modifier
+    return rolls, modifier, total
+
+
 class Gameplay(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -17,23 +38,7 @@ class Gameplay(commands.Cog):
     async def roll(self, ctx, *, dice_string: str):
         """Rolls dice. Format: !roll 1d20+3"""
         try:
-            parts = dice_string.replace(' ', '').split('d')
-            num_dice = int(parts[0]) if parts[0] else 1
-            
-            modifier = 0
-            if '+' in parts[1]:
-                die_parts = parts[1].split('+')
-                die_size = int(die_parts[0])
-                modifier = int(die_parts[1])
-            elif '-' in parts[1]:
-                die_parts = parts[1].split('-')
-                die_size = int(die_parts[0])
-                modifier = -int(die_parts[1])
-            else:
-                die_size = int(parts[1])
-
-            rolls = [random.randint(1, die_size) for _ in range(num_dice)]
-            total = sum(rolls) + modifier
+            rolls, modifier, total = roll_dice(dice_string)
             
             roll_details = f"Rolling: {dice_string}\nResult: `{rolls}` + ({modifier}) = **{total}**"
             await ctx.send(f"{ctx.author.mention}, {roll_details}")

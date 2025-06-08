@@ -14,6 +14,7 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 import string
 from openai import OpenAI # Make sure to add this at the top with other imports
+from cogs.gameplay import roll_dice
 
 
 # --- Logging Setup ---
@@ -142,6 +143,20 @@ SEARCHABLE_CHANNEL_IDS = [
     # 876543210987654321, # example-channel-2
 ]
 
+
+# --- Helper Functions ---
+def perform_roll(dice_string: str):
+    """A simple dice roller that returns a formatted string."""
+    try:
+        rolls, modifier, total = roll_dice(dice_string)
+        
+        mod_str = f" + {modifier}" if modifier > 0 else f" - {abs(modifier)}" if modifier < 0 else ""
+        return f"Brian rolls `{dice_string}`...\n**Result:** `{rolls}`{mod_str} = **{total}**"
+
+    except Exception:
+        return f"Brian confused by `{dice_string}`. Is not good dice."
+
+
 # --- Bot Events ---
 @bot.event
 async def on_ready():
@@ -177,109 +192,94 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Process commands first
+    # First, process commands that start with the prefix
     await bot.process_commands(message)
 
-    # Respond to mentions if it's not a command
-    if bot.user.mentioned_in(message) and not message.content.startswith(bot.command_prefix):
-        logger.info(f"Bot was mentioned by {message.author.name}")
-        
-        # Check rate limit
+    # If a command was already processed, don't do anything else
+    if message.content.startswith(bot.command_prefix):
+        return
+
+    # --- FIX 1: Allow users to use !roll mid-sentence ---
+    # We check for the command manually if it's not at the start
+    roll_in_message = re.search(r'!roll\s+((?:\d+d\d+|\d+)(?:[+\-]\d+)?)', message.content, re.IGNORECASE)
+    if roll_in_message:
+        dice_string = roll_in_message.group(1)
+        roll_command = bot.get_command('roll')
+        if roll_command:
+            logger.info(f"Found mid-message roll from {message.author.name}: {dice_string}")
+            # Manually invoke the command from the cog
+            ctx = await bot.get_context(message)
+            gameplay_cog = bot.get_cog('Gameplay')
+            if gameplay_cog:
+                await roll_command.callback(gameplay_cog, ctx, dice_string=dice_string)
+        return # Stop processing to avoid treating it as a mention
+
+    # --- FIX 2: Handle AI conversations and the @ROLL_DICE action ---
+    if bot.user.mentioned_in(message):
         if mention_limiter.is_rate_limited(message.author.id):
-            logger.info(f"Rate limit hit for user {message.author.name}")
-            await message.reply("I'm getting too many requests right now. Please wait a moment before trying again.")
+            await message.reply("I'm getting too many requests right now. Please wait a moment.")
             return
 
         async with message.channel.typing():
-            logger.info(f"Preparing response for {message.author.name}")
-            
-            # --- START: MODIFICATION FOR CHARACTER SHEET CONTEXT ---
-
-            # 1. Start with the base system prompt
+            # (The logic for adding character sheet context stays the same here)
             system_prompt_content = BRIAN_SYSTEM_PROMPT
-            
-            # 2. Check for the user's character file and add it to the prompt
             char_file_path = f"characters/{message.author.id}.json"
             if os.path.exists(char_file_path):
-                logger.info(f"Found character sheet for {message.author.name}")
+                # ... (the character sheet loading logic you already have)
                 with open(char_file_path, 'r', encoding='utf-8') as f:
                     character_data = json.load(f)
-                
                 character_json_string = json.dumps(character_data, indent=2)
-                
-                # 3. Append the character data to the system prompt
-                contextual_prompt_addition = f"""
-# YOUR FRIEND'S DATA
-You are talking to {message.author.display_name}. This is their character sheet. Use it to answer any questions they have about their stats, items, or abilities. Be helpful.
+                system_prompt_content += f"\n# YOUR FRIEND'S DATA\nYou are talking to {message.author.display_name}. This is their character sheet. Use it to answer any questions they have about their stats, items, or abilities.\n\n```json\n{character_json_string}\n```"
 
-```json
-{character_json_string}
-```
-"""
-                system_prompt_content += contextual_prompt_addition
-            else:
-                logger.info(f"No character sheet found for {message.author.name}")
-
-            # --- END: MODIFICATION FOR CHARACTER SHEET CONTEXT ---
-            
             history_messages = []
-            try:
-                async for hist_msg in message.channel.history(limit=10):
-                    role = "user"
-                    if hist_msg.author.bot:
-                        role = "assistant" if hist_msg.author.id == bot.user.id else "user"
-                    
-                    history_messages.append({
-                        "role": role,
-                        "content": f"{hist_msg.author.display_name}: {sanitize_input(hist_msg.content)}"
-                    })
-                logger.info(f"Collected {len(history_messages)} messages from history")
-            except Exception as e:
-                logger.error(f"Error fetching history: {str(e)}")
+            async for hist_msg in message.channel.history(limit=10):
+                role = "user"
+                if hist_msg.author.bot:
+                    role = "assistant" if hist_msg.author.id == bot.user.id else "user"
+                history_messages.append({"role": role, "content": f"{hist_msg.author.display_name}: {sanitize_input(hist_msg.content)}"})
+            history_messages.reverse()
 
-            history_messages.reverse() # Oldest first
-
-            # 4. Use the new, potentially modified, system prompt
-            payload = [
-                {"role": "system", "content": system_prompt_content},
-                *history_messages
-            ]
+            payload = [{"role": "system", "content": system_prompt_content}, *history_messages]
             
             try:
-                logger.info("Sending request to OpenAI")
                 response = client.chat.completions.create(
-                    model=MODEL_NAME,
-                    messages=payload,
-                    max_tokens=MAX_TOKENS_FOR_RESPONSE,
-                    temperature=0.7
+                    model=MODEL_NAME, messages=payload, max_tokens=MAX_TOKENS_FOR_RESPONSE, temperature=0.7
                 )
-                
                 final_reply_to_send = response.choices[0].message.content
-                logger.info(f"Received response from OpenAI: {final_reply_to_send[:100]}...")
+                
+                # --- Handle Secret Actions ---
+                roll_result_str = None
+                
+                # Check for @ROLL_DICE
+                roll_match = re.search(r"@ROLL_DICE='(.*?)'", final_reply_to_send)
+                if roll_match:
+                    final_reply_to_send = final_reply_to_send.replace(roll_match.group(0), "").strip()
+                    dice_to_roll = roll_match.group(1).strip()
+                    logger.info(f"AI wants to roll dice: {dice_to_roll}")
+                    roll_result_str = perform_roll(dice_to_roll)
 
+                # Check for @REACT_EMOJI (existing logic)
                 react_match = re.search(r"@REACT_EMOJI='(.*?)'", final_reply_to_send)
                 if react_match:
                     final_reply_to_send = final_reply_to_send.replace(react_match.group(0), "").strip()
                     emoji_to_react_with = react_match.group(1).strip()
-                    
                     if emoji_to_react_with:
-                        try:
-                            await message.add_reaction(emoji_to_react_with)
-                        except discord.HTTPException as e:
-                            logger.warning(f"Failed to add reaction '{emoji_to_react_with}': {str(e)}")
+                        await message.add_reaction(emoji_to_react_with)
 
-                if final_reply_to_send: # Make sure there's something to say
-                    logger.info("Sending reply to Discord")
+                # --- Send the final message ---
+                if final_reply_to_send:
                     await message.reply(final_reply_to_send)
-                    logger.info("Reply sent successfully")
+
+                # If there was a roll, send it as a follow-up message
+                if roll_result_str:
+                    await message.channel.send(roll_result_str)
 
             except Exception as e:
-                logger.error(f"OpenAI API call failed: {str(e)}", exc_info=True)
+                logger.error(f"OpenAI API call failed: {e}", exc_info=True)
                 await message.reply("I am currently experiencing an issue with my neural interface. Please try again later.")
 
 
 # --- Bot Commands ---
-
 @bot.command(name='find')
 async def find_message(ctx, *, query: str):
     """Searches across specified channels for a query."""

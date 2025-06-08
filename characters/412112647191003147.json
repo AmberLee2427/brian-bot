@@ -38,9 +38,14 @@
     "speed": 30,
     "hit_points": {
       "max": 34,
-      "current": 19
+      "current": 19,
+      "temporary": 0
     },
-    "hit_dice": "3d10",
+    "hit_dice": {
+      "total": 3,
+      "die_type": "d10",
+      "spent": 0
+    },
     "passive_perception": 12,
     "skills": {
       "acrobatics": { "total": 3, "proficient": true },
@@ -74,7 +79,7 @@
       "50 ft. rope",
       "Backpack"
     ],
-    "currency": { "sp": 5, "gp": 3 },
+    "currency": { "sp": 1, "gp": 18, "cp": 0},
     "attacks": [
       { "name": "Twinblade",       "type": "melee",           "attack_bonus": 6, "damage": "1d8+4" },
       { "name": "Light Crossbow",  "type": "ranged 80/320",   "attack_bonus": 4, "damage": "1d8+1" },

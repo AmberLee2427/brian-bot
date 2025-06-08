@@ -5,6 +5,7 @@ import random
 import json
 import os
 import logging
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,42 @@ class Gameplay(commands.Cog):
         # Ensure characters directory exists
         if not os.path.exists('characters'):
             os.makedirs('characters')
+
+    async def _apply_hp_change(self, user_id: int, hp_change: int) -> str:
+        """Internal helper to apply healing or damage, accounting for temporary HP."""
+        char_file = get_character_path(user_id)
+        if not os.path.exists(char_file):
+            raise Exception("Can't find your character sheet, friend.")
+
+        with open(char_file, 'r+') as f:
+            data = json.load(f)
+            hp = data.setdefault('hit_points', {})
+            hp.setdefault('current', 0)
+            hp.setdefault('max', 0)
+            hp.setdefault('temporary', 0)
+
+            if hp_change > 0: # Healing
+                hp['current'] = min(hp['max'], hp['current'] + hp_change)
+                action_str = f"Healed for {hp_change} HP."
+            else: # Damage
+                damage = abs(hp_change)
+                action_str = f"Took {damage} damage."
+                
+                # Damage comes from temporary HP first
+                if hp['temporary'] > 0:
+                    temp_damage = min(damage, hp['temporary'])
+                    hp['temporary'] -= temp_damage
+                    damage -= temp_damage # Remaining damage
+                    action_str += f" ({temp_damage} from Temp HP)"
+
+                if damage > 0:
+                    hp['current'] -= damage
+
+            f.seek(0)
+            json.dump(data, f, indent=4)
+            f.truncate()
+        
+        return f"{action_str} You are now at **{hp['current']}/{hp['max']} HP** (with {hp['temporary']} Temp HP)."
 
     async def _update_coin(self, user_id: int, amount: int, coin_type: str) -> str:
         """Internal helper to modify a user's coin balance with currency conversion."""
@@ -209,46 +246,354 @@ class Gameplay(commands.Cog):
             logger.error(f"Error in roll command: {str(e)}")
             await ctx.send("Gah! Wrong format. Try `!roll 1d20` or `!roll 2d6+3`.")
 
-    @commands.command(name='sr')
-    async def short_rest(self, ctx):
-        """Performs a short rest for your character."""
-        try:
-            char_file = get_character_path(ctx.author.id)
-            if not os.path.exists(char_file):
-                await ctx.send("Can't find your character sheet, friend.")
-                return
+    @commands.command(name='hp', case_insensitive=True)
+    async def hp(self, ctx, *, args: str = None):
+        """Shows HP status or applies healing/damage.
+        Usage: !hp, !hp 10 (heal), !hp -5 (damage)
+        """
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            await ctx.send("Can't find your character sheet, friend.")
+            return
 
-            # Here you would add logic to modify the JSON file
-            # e.g., restore specific abilities or let user spend hit dice
-            
-            await ctx.send(f"{ctx.author.mention} takes a short rest. Ah, refreshing!")
+        if args is None:
+            # Show HP status
+            with open(char_file, 'r') as f:
+                hp = json.load(f).get('hit_points', {})
+            current = hp.get('current', 0)
+            max_hp = hp.get('max', 0)
+            temp = hp.get('temporary', 0)
+            await ctx.send(f"You are at **{current}/{max_hp} HP** with **{temp}** Temporary HP.")
+            return
+        
+        try:
+            amount = int(args)
+            response = await self._apply_hp_change(ctx.author.id, amount)
+            await ctx.send(response)
+        except ValueError:
+            await ctx.send("That not a number, friend. Use `!hp 10` or `!hp -5`.")
         except Exception as e:
-            logger.error(f"Error in short_rest command: {str(e)}")
-            await ctx.send("Oops! Something went wrong during your rest.")
+            await ctx.send(str(e))
 
-    @commands.command(name='lr')
+    @commands.command(name='temphp', case_insensitive=True)
+    async def temp_hp(self, ctx, amount: int):
+        """Adds temporary HP to your character."""
+        if amount < 0:
+            await ctx.send("Cannot add negative temporary HP, friend.")
+            return
+
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            await ctx.send("Can't find your character sheet, friend.")
+            return
+
+        with open(char_file, 'r+') as f:
+            data = json.load(f)
+            hp = data.setdefault('hit_points', {})
+            # Per D&D rules, new temp HP replaces old if it's higher
+            if amount > hp.get('temporary', 0):
+                hp['temporary'] = amount
+                action_str = f"You gain **{amount}** Temporary HP."
+            else:
+                action_str = f"Your new temporary HP ({amount}) is not higher than your current ({hp.get('temporary', 0)}). No change."
+
+            f.seek(0)
+            json.dump(data, f, indent=4)
+            f.truncate()
+        
+        await ctx.send(action_str)
+
+    @commands.command(name='sr', aliases=['shortrest'])
+    async def short_rest(self, ctx):
+        """Tells you your available hit dice for a short rest."""
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            await ctx.send("Can't find your character sheet, friend.")
+            return
+
+        with open(char_file, 'r') as f:
+            hd = json.load(f).get('hit_dice', {})
+        total = hd.get('total', 0)
+        spent = hd.get('spent', 0)
+        available = total - spent
+        die_type = hd.get('die_type', 'd?')
+
+        await ctx.send(f"You can spend up to **{available}** of your **{total} {die_type}** hit dice. Use `!spendhd <number>` to heal.")
+
+    @commands.command(name='spendhd')
+    async def spend_hit_dice(self, ctx, num_to_spend: int = 1):
+        """Spends hit dice to heal during a short rest."""
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            raise Exception("Can't find your character sheet.")
+
+        with open(char_file, 'r+') as f:
+            data = json.load(f)
+            hd = data.setdefault('hit_dice', {})
+            total_hd = hd.setdefault('total', 0)
+            spent_hd = hd.setdefault('spent', 0)
+            available_hd = total_hd - spent_hd
+            
+            if num_to_spend > available_hd:
+                raise Exception(f"You only have {available_hd} hit dice to spend, friend.")
+
+            # Get Constitution modifier for healing
+            con_mod = data.get('ability_modifiers', {}).get('constitution_mod', 0)
+            die_type_str = hd.get('die_type', 'd6')
+            die_size = int(die_type_str.replace('d', ''))
+
+            total_healed = 0
+            rolls = []
+            for _ in range(num_to_spend):
+                roll = random.randint(1, die_size)
+                rolls.append(roll)
+                total_healed += (roll + con_mod)
+
+            # Apply the healing
+            hp = data.setdefault('hit_points', {})
+            hp['current'] = min(hp.get('max', 0), hp.get('current', 0) + total_healed)
+
+            # Update spent hit dice
+            hd['spent'] += num_to_spend
+
+            f.seek(0)
+            json.dump(data, f, indent=4)
+            f.truncate()
+        
+        await ctx.send(f"You spend {num_to_spend} hit dice.\nRolls: `{rolls}` + {num_to_spend * con_mod} (CON) = **{total_healed}** HP recovered.\nYou are now at **{hp['current']}/{hp['max']}** HP.")
+
+
+    @commands.command(name='lr', aliases=['longrest'])
     async def long_rest(self, ctx):
-        """Performs a long rest, restoring HP and abilities."""
+        """Performs a long rest, restoring HP and half hit dice."""
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            raise Exception("Can't find your character sheet.")
+
+        with open(char_file, 'r+') as f:
+            data = json.load(f)
+            
+            # Restore HP and reset temp HP
+            hp = data.setdefault('hit_points', {})
+            hp['current'] = hp.get('max', 0)
+            hp['temporary'] = 0
+
+            # Restore half of the total hit dice (minimum of 1)
+            hd = data.setdefault('hit_dice', {})
+            total_hd = hd.get('total', 0)
+            dice_to_recover = max(1, total_hd // 2)
+            hd['spent'] = max(0, hd.get('spent', 0) - dice_to_recover)
+            
+            f.seek(0)
+            json.dump(data, f, indent=4)
+            f.truncate()
+        
+        await ctx.send(f"You feel fully rested! All HP restored. You recover {dice_to_recover} hit dice.")
+
+    @commands.command(name='attr', aliases=['attribute', 'stat'])
+    async def show_attribute(self, ctx, *, attribute_path: str = None):
+        """Shows the value of a character attribute.
+        Usage: !attr, !attr strength, !attr skills.athletics
+        """
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            await ctx.send("Can't find your character sheet, friend.")
+            return
+
         try:
-            char_file = get_character_path(ctx.author.id)
-            if not os.path.exists(char_file):
-                await ctx.send("Can't find your character sheet, friend.")
+            with open(char_file, 'r') as f:
+                data = json.load(f)
+
+            if attribute_path is None:
+                # Show all top-level attributes
+                embed = discord.Embed(
+                    title=f"{ctx.author.display_name}'s Attributes",
+                    color=discord.Color.blue()
+                )
+                for key, value in data.items():
+                    if isinstance(value, dict):
+                        # For nested objects, show a summary
+                        embed.add_field(
+                            name=key.title(),
+                            value=f"{len(value)} properties",
+                            inline=True
+                        )
+                    else:
+                        # For simple values, show the value
+                        embed.add_field(
+                            name=key.title(),
+                            value=str(value),
+                            inline=True
+                        )
+                await ctx.send(embed=embed)
                 return
+
+            # Handle nested attributes using dot notation
+            current = data
+            path_parts = attribute_path.lower().split('.')
+            
+            for part in path_parts:
+                if isinstance(current, dict):
+                    current = current.get(part)
+                else:
+                    await ctx.send(f"Can't find '{attribute_path}'. Try a different path.")
+                    return
+
+            if current is None:
+                await ctx.send(f"Can't find '{attribute_path}'. Try a different path.")
+                return
+
+            # Format the response based on the type of value
+            if isinstance(current, dict):
+                embed = discord.Embed(
+                    title=f"{attribute_path.title()}",
+                    color=discord.Color.blue()
+                )
+                for key, value in current.items():
+                    embed.add_field(
+                        name=key.title(),
+                        value=str(value),
+                        inline=True
+                    )
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send(f"**{attribute_path.title()}**: {current}")
+
+        except Exception as e:
+            logger.error(f"Error showing attribute: {str(e)}")
+            await ctx.send("Oops! Something went wrong while looking up that attribute.")
+
+    @commands.command(name='setattr', aliases=['setattribute', 'setstat'])
+    async def set_attribute(self, ctx, attribute_path: str, *, value: str):
+        """Sets the value of a character attribute.
+        Usage: !setattr strength 16, !setattr skills.athletics 5
+        """
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            await ctx.send("Can't find your character sheet, friend.")
+            return
+
+        try:
+            # Try to convert value to number if possible
+            try:
+                if '.' in value:
+                    value = float(value)
+                else:
+                    value = int(value)
+            except ValueError:
+                # If it's not a number, keep it as a string
+                pass
 
             with open(char_file, 'r+') as f:
                 data = json.load(f)
-                # Restore HP to max
-                data['hit_points']['current'] = data['hit_points']['max']
-                # You can add logic here to restore hit dice, spell slots, etc.
                 
+                # Handle nested attributes using dot notation
+                current = data
+                path_parts = attribute_path.lower().split('.')
+                
+                # Navigate to the parent object
+                for part in path_parts[:-1]:
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
+
+                # Set the value
+                current[path_parts[-1]] = value
+                
+                # Save the changes
                 f.seek(0)
                 json.dump(data, f, indent=4)
                 f.truncate()
 
-            await ctx.send(f"{ctx.author.mention} feels fully rested. All HP restored! Ready for more... snacks?")
+            await ctx.send(f"Set **{attribute_path}** to **{value}**.")
+
         except Exception as e:
-            logger.error(f"Error in long_rest command: {str(e)}")
-            await ctx.send("Oops! Something went wrong during your rest.")
+            logger.error(f"Error setting attribute: {str(e)}")
+            await ctx.send("Oops! Something went wrong while setting that attribute.")
+
+    @commands.command(name='delattr', aliases=['delattribute', 'delstat'])
+    async def delete_attribute(self, ctx, *, attribute_path: str):
+        """Deletes a character attribute.
+        Usage: !delattr strength, !delattr skills.athletics
+        """
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            await ctx.send("Can't find your character sheet, friend.")
+            return
+
+        try:
+            with open(char_file, 'r+') as f:
+                data = json.load(f)
+                
+                # Handle nested attributes using dot notation
+                current = data
+                path_parts = attribute_path.lower().split('.')
+                
+                # Navigate to the parent object
+                for part in path_parts[:-1]:
+                    if part not in current:
+                        await ctx.send(f"Can't find '{attribute_path}'. Try a different path.")
+                        return
+                    current = current[part]
+
+                # Delete the attribute
+                if path_parts[-1] in current:
+                    del current[path_parts[-1]]
+                else:
+                    await ctx.send(f"Can't find '{attribute_path}'. Try a different path.")
+                    return
+                
+                # Save the changes
+                f.seek(0)
+                json.dump(data, f, indent=4)
+                f.truncate()
+
+            await ctx.send(f"Deleted **{attribute_path}**.")
+
+        except Exception as e:
+            logger.error(f"Error deleting attribute: {str(e)}")
+            await ctx.send("Oops! Something went wrong while deleting that attribute.")
+
+    @commands.command(name='sheet')
+    async def show_sheet(self, ctx, as_file: str = None):
+        """Shows your character sheet.
+        Usage: !sheet - Shows the sheet in chat
+        Usage: !sheet file - Sends the sheet as a JSON file
+        """
+        char_file = get_character_path(ctx.author.id)
+        if not os.path.exists(char_file):
+            await ctx.send("Can't find your character sheet, friend.")
+            return
+
+        try:
+            with open(char_file, 'r') as f:
+                data = json.load(f)
+
+            if as_file and as_file.lower() == 'file':
+                # Create a temporary file with the JSON data
+                temp_file = discord.File(
+                    fp=io.StringIO(json.dumps(data, indent=4)),
+                    filename=f"{ctx.author.name}_character_sheet.json"
+                )
+                await ctx.send("Here's your character sheet:", file=temp_file)
+            else:
+                # Format the JSON for display in chat
+                formatted_json = json.dumps(data, indent=2)
+                
+                # Split into chunks if too long
+                if len(formatted_json) > 1900:  # Discord message limit is 2000
+                    chunks = [formatted_json[i:i+1900] for i in range(0, len(formatted_json), 1900)]
+                    for i, chunk in enumerate(chunks):
+                        if i == 0:
+                            await ctx.send(f"```json\n{chunk}\n```")
+                        else:
+                            await ctx.send(f"```json\n{chunk}\n```")
+                else:
+                    await ctx.send(f"```json\n{formatted_json}\n```")
+
+        except Exception as e:
+            logger.error(f"Error showing character sheet: {str(e)}")
+            await ctx.send("Oops! Something went wrong while showing your character sheet.")
 
 # This setup function is required for the cog to be loaded
 async def setup(bot):

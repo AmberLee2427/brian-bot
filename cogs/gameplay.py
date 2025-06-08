@@ -604,6 +604,28 @@ class Gameplay(commands.Cog):
             logger.error(f"Error showing character sheet: {str(e)}")
             await ctx.send("Oops! Brain ate your character sheet.")
 
+    @commands.command(name='importsheet')
+    async def import_sheet(self, ctx, *, json_data: str):
+        """Imports a character sheet from JSON data.
+        Usage: !importsheet {"your": "json data"}
+        """
+        char_file = get_character_path(ctx.author.id)
+        try:
+            # Parse the JSON data
+            data = json.loads(json_data)
+            
+            # Save it to the character file
+            with open(char_file, 'w') as f:
+                json.dump(data, f, indent=4)
+            
+            await ctx.send("Character sheet imported successfully! Use `!sheet` to verify.")
+            
+        except json.JSONDecodeError:
+            await ctx.send("That's not valid JSON data, friend. Make sure to format it correctly.")
+        except Exception as e:
+            logger.error(f"Error importing character sheet: {str(e)}")
+            await ctx.send("Something went wrong while importing your character sheet.")
+
 # This setup function is required for the cog to be loaded
 async def setup(bot):
     await bot.add_cog(Gameplay(bot))

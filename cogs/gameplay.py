@@ -605,23 +605,33 @@ class Gameplay(commands.Cog):
             await ctx.send("Oops! Brain ate your character sheet.")
 
     @commands.command(name='importsheet')
-    async def import_sheet(self, ctx, *, json_data: str):
-        """Imports a character sheet from JSON data.
-        Usage: !importsheet {"your": "json data"}
+    async def import_sheet(self, ctx):
+        """Imports a character sheet from a JSON file attachment.
+        Usage: !importsheet (with a JSON file attached)
         """
-        char_file = get_character_path(ctx.author.id)
+        if not ctx.message.attachments:
+            await ctx.send("Please attach a JSON file with your character sheet data.")
+            return
+
+        attachment = ctx.message.attachments[0]
+        if not attachment.filename.endswith('.json'):
+            await ctx.send("Please attach a JSON file.")
+            return
+
         try:
-            # Parse the JSON data
-            data = json.loads(json_data)
+            # Download the file
+            file_content = await attachment.read()
+            data = json.loads(file_content.decode('utf-8'))
             
             # Save it to the character file
+            char_file = get_character_path(ctx.author.id)
             with open(char_file, 'w') as f:
                 json.dump(data, f, indent=4)
             
             await ctx.send("Character sheet imported successfully! Use `!sheet` to verify.")
             
         except json.JSONDecodeError:
-            await ctx.send("That's not valid JSON data, friend. Make sure to format it correctly.")
+            await ctx.send("That's not valid JSON data, friend. Make sure your file is formatted correctly.")
         except Exception as e:
             logger.error(f"Error importing character sheet: {str(e)}")
             await ctx.send("Something went wrong while importing your character sheet.")

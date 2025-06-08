@@ -634,7 +634,7 @@ class Gameplay(commands.Cog):
             await ctx.send("That's not tasty JSON data, friend. Make sure your file is formatted all nice and tidy.")
         except Exception as e:
             logger.error(f"Error importing character sheet: {str(e)}")
-            await ctx.send("Something went wrong while. I might have turned it invisible and dropped it. Try again?")
+            await ctx.send("Um... I might have turned your sheet invisible and dropped it. Try again?")
 
 # This setup function is required for the cog to be loaded
 async def setup(bot):

@@ -4,79 +4,44 @@ from discord.ext import commands
 import random
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # --- Helper function to get a user's character file path ---
 def get_character_path(user_id):
+    # Ensure characters directory exists
+    if not os.path.exists('characters'):
+        os.makedirs('characters')
     return f"characters/{user_id}.json"
 
 def roll_dice(dice_string):
-    parts = dice_string.replace(' ', '').split('d')
-    num_dice = int(parts[0]) if parts[0] else 1
+    """Rolls dice and returns the results.
+    Format: "2d6+3" or "1d20"
+    Returns: (rolls, modifier, total)
+    """
+    try:
+        parts = dice_string.replace(' ', '').split('d')
+        num_dice = int(parts[0]) if parts[0] else 1
 
-    modifier = 0
-    if '+' in parts[1]:
-        die_parts = parts[1].split('+')
-        die_size = int(die_parts[0])
-        modifier = int(die_parts[1])
-    elif '-' in parts[1]:
-        die_parts = parts[1].split('-')
-        die_size = int(die_parts[0])
-        modifier = -int(die_parts[1])
-    else:
-        die_size = int(parts[1])
+        modifier = 0
+        if '+' in parts[1]:
+            die_parts = parts[1].split('+')
+            die_size = int(die_parts[0])
+            modifier = int(die_parts[1])
+        elif '-' in parts[1]:
+            die_parts = parts[1].split('-')
+            die_size = int(die_parts[0])
+            modifier = -int(die_parts[1])
+        else:
+            die_size = int(parts[1])
 
-    rolls = [random.randint(1, die_size) for _ in range(num_dice)]
-    total = sum(rolls) + modifier
-    return rolls, modifier, total
-
-async def _update_coin(self, user_id: int, amount: int, coin_type: str) -> str:
-    """Internal helper to modify a user's coin balance with currency conversion."""
-    char_file = get_character_path(user_id)
-    if not os.path.exists(char_file):
-        raise Exception("Can't find your character sheet, friend.")
-
-    # --- New Conversion Logic ---
-    conversion_rates = {'gp': 100, 'sp': 10, 'cp': 1}
-    transaction_in_cp = amount * conversion_rates[coin_type]
-
-    with open(char_file, 'r+') as f:
-        data = json.load(f)
-        currency = data.setdefault('currency', {})
-        gp = currency.setdefault('gp', 0)
-        sp = currency.setdefault('sp', 0)
-        cp = currency.setdefault('cp', 0)
-
-        # Calculate the total balance in the smallest unit (copper)
-        total_balance_in_cp = (gp * 100) + (sp * 10) + cp
-
-        # Check if there are enough funds for a withdrawal
-        if transaction_in_cp < 0 and abs(transaction_in_cp) > total_balance_in_cp:
-            raise Exception(f"You don't have enough coin for that, friend! Your total worth is only {gp}gp, {sp}sp, {cp}cp.")
-
-        # Apply the transaction
-        new_total_balance_in_cp = total_balance_in_cp + transaction_in_cp
-        
-        # Convert the new total back into gp, sp, and cp for storage
-        new_gp = new_total_balance_in_cp // 100
-        remainder = new_total_balance_in_cp % 100
-        new_sp = remainder // 10
-        new_cp = remainder % 10
-
-        # Update the data dictionary with the new normalized values
-        currency['gp'] = new_gp
-        currency['sp'] = new_sp
-        currency['cp'] = new_cp
-        
-        # Save the updated data back to the file
-        f.seek(0)
-        json.dump(data, f, indent=4)
-        f.truncate()
-    
-    action = "Added" if amount > 0 else "Removed"
-    transaction_str = f"{abs(amount)} {coin_type.upper()}"
-    new_balance_str = f"You now have **{new_gp} GP, {new_sp} SP, and {new_cp} CP**."
-    
-    return f"Okay, friend! {action} {transaction_str}. {new_balance_str}"
+        rolls = [random.randint(1, die_size) for _ in range(num_dice)]
+        total = sum(rolls) + modifier
+        return rolls, modifier, total
+    except Exception as e:
+        logger.error(f"Error rolling dice '{dice_string}': {str(e)}")
+        raise ValueError("Invalid dice format. Try '2d6+3' or '1d20'")
 
 def polish_coins(string):
     """Polish the coin string to make it easier to parse."""
@@ -105,6 +70,71 @@ def polish_coins(string):
 class Gameplay(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # Ensure characters directory exists
+        if not os.path.exists('characters'):
+            os.makedirs('characters')
+
+    async def _update_coin(self, user_id: int, amount: int, coin_type: str) -> str:
+        """Internal helper to modify a user's coin balance with currency conversion."""
+        char_file = get_character_path(user_id)
+        try:
+            if not os.path.exists(char_file):
+                # Create a new character file if it doesn't exist
+                initial_data = {
+                    "currency": {
+                        "gp": 0,
+                        "sp": 0,
+                        "cp": 0
+                    }
+                }
+                with open(char_file, 'w') as f:
+                    json.dump(initial_data, f, indent=4)
+
+            # --- New Conversion Logic ---
+            conversion_rates = {'gp': 100, 'sp': 10, 'cp': 1}
+            transaction_in_cp = amount * conversion_rates[coin_type]
+
+            with open(char_file, 'r+') as f:
+                data = json.load(f)
+                currency = data.setdefault('currency', {})
+                gp = currency.setdefault('gp', 0)
+                sp = currency.setdefault('sp', 0)
+                cp = currency.setdefault('cp', 0)
+
+                # Calculate the total balance in the smallest unit (copper)
+                total_balance_in_cp = (gp * 100) + (sp * 10) + cp
+
+                # Check if there are enough funds for a withdrawal
+                if transaction_in_cp < 0 and abs(transaction_in_cp) > total_balance_in_cp:
+                    raise ValueError(f"You don't have enough coin for that, friend! Your total worth is only {gp}gp, {sp}sp, {cp}cp.")
+
+                # Apply the transaction
+                new_total_balance_in_cp = total_balance_in_cp + transaction_in_cp
+                
+                # Convert the new total back into gp, sp, and cp for storage
+                new_gp = new_total_balance_in_cp // 100
+                remainder = new_total_balance_in_cp % 100
+                new_sp = remainder // 10
+                new_cp = remainder % 10
+
+                # Update the data dictionary with the new normalized values
+                currency['gp'] = new_gp
+                currency['sp'] = new_sp
+                currency['cp'] = new_cp
+                
+                # Save the updated data back to the file
+                f.seek(0)
+                json.dump(data, f, indent=4)
+                f.truncate()
+            
+            action = "Added" if amount > 0 else "Removed"
+            transaction_str = f"{abs(amount)} {coin_type.upper()}"
+            new_balance_str = f"You now have **{new_gp} GP, {new_sp} SP, and {new_cp} CP**."
+            
+            return f"Okay, friend! {action} {transaction_str}. {new_balance_str}"
+        except Exception as e:
+            logger.error(f"Error updating coins for user {user_id}: {str(e)}")
+            raise
 
     @commands.command(name='coin', case_insensitive=True)
     async def coin(self, ctx, *, args: str = None):
@@ -114,33 +144,40 @@ class Gameplay(commands.Cog):
         !coin 10gp -> Adds 10 gold.
         !coin -5sp -> Removes 5 silver.
         """
-        if args is None:
-            # Show status if no arguments are given
-            char_file = get_character_path(ctx.author.id)
-            if not os.path.exists(char_file):
-                await ctx.send("Can't find your character sheet, friend.")
+        try:
+            if args is None:
+                # Show status if no arguments are given
+                char_file = get_character_path(ctx.author.id)
+                if not os.path.exists(char_file):
+                    # Create new character file with zero balance
+                    initial_data = {
+                        "currency": {
+                            "gp": 0,
+                            "sp": 0,
+                            "cp": 0
+                        }
+                    }
+                    with open(char_file, 'w') as f:
+                        json.dump(initial_data, f, indent=4)
+
+                with open(char_file, 'r') as f:
+                    data = json.load(f)
+                    currency = data.get('currency', {})
+                    gp = currency.get('gp', 0)
+                    sp = currency.get('sp', 0)
+                    cp = currency.get('cp', 0)
+
+                embed = discord.Embed(
+                    title=f"{ctx.author.display_name}'s Coin Purse",
+                    color=discord.Color.gold()
+                )
+                embed.add_field(name="Gold (GP)", value=f"{gp} 💰", inline=True)
+                embed.add_field(name="Silver (SP)", value=f"{sp} 🪙", inline=True)
+                embed.add_field(name="Copper (CP)", value=f"{cp}", inline=True)
+                await ctx.send(embed=embed)
                 return
 
-            with open(char_file, 'r') as f:
-                data = json.load(f)
-                currency = data.get('currency', {})
-                gp = currency.get('gp', 0)
-                sp = currency.get('sp', 0)
-                cp = currency.get('cp', 0)
-
-            embed = discord.Embed(
-                title=f"{ctx.author.display_name}'s Coin Purse",
-                color=discord.Color.gold()
-            )
-            embed.add_field(name="Gold (GP)", value=f"{gp} 💰", inline=True)
-            embed.add_field(name="Silver (SP)", value=f"{sp} 🪙", inline=True)
-            embed.add_field(name="Copper (CP)", value=f"{cp}", inline=True) # Assuming no emoji for copper
-            await ctx.send(embed=embed)
-            return
-
-        # --- Argument Parsing Logic ---
-        try:
-            # Clean up the argument string
+            # --- Argument Parsing Logic ---
             amount, coin_type = polish_coins(args)
             
             if coin_type is None:
@@ -152,15 +189,12 @@ class Gameplay(commands.Cog):
                 return
             
             # Call the internal helper to do the work
-            try:
-                response_message = await self._update_coin(ctx.author.id, amount, coin_type)
-                await ctx.send(response_message)
-            except Exception as e:
-                await ctx.send(f"Error: {e}")
+            response_message = await self._update_coin(ctx.author.id, amount, coin_type)
+            await ctx.send(response_message)
 
-        except (ValueError, IndexError):
-            await ctx.send("Gah! Wrong format. Try `!coin 10gp` or `!coin -2sp`.")
-
+        except Exception as e:
+            logger.error(f"Error in coin command: {str(e)}")
+            await ctx.send(f"Oops! Something went wrong: {str(e)}")
 
     @commands.command(name='roll')
     async def roll(self, ctx, *, dice_string: str):
@@ -172,41 +206,49 @@ class Gameplay(commands.Cog):
             await ctx.send(f"{ctx.author.mention}, {roll_details}")
 
         except Exception as e:
+            logger.error(f"Error in roll command: {str(e)}")
             await ctx.send("Gah! Wrong format. Try `!roll 1d20` or `!roll 2d6+3`.")
 
     @commands.command(name='sr')
     async def short_rest(self, ctx):
         """Performs a short rest for your character."""
-        char_file = get_character_path(ctx.author.id)
-        if not os.path.exists(char_file):
-            await ctx.send("Can't find your character sheet, friend.")
-            return
+        try:
+            char_file = get_character_path(ctx.author.id)
+            if not os.path.exists(char_file):
+                await ctx.send("Can't find your character sheet, friend.")
+                return
 
-        # Here you would add logic to modify the JSON file
-        # e.g., restore specific abilities or let user spend hit dice
-        
-        await ctx.send(f"{ctx.author.mention} takes a short rest. Ah, refreshing!")
+            # Here you would add logic to modify the JSON file
+            # e.g., restore specific abilities or let user spend hit dice
+            
+            await ctx.send(f"{ctx.author.mention} takes a short rest. Ah, refreshing!")
+        except Exception as e:
+            logger.error(f"Error in short_rest command: {str(e)}")
+            await ctx.send("Oops! Something went wrong during your rest.")
 
     @commands.command(name='lr')
     async def long_rest(self, ctx):
         """Performs a long rest, restoring HP and abilities."""
-        char_file = get_character_path(ctx.author.id)
-        if not os.path.exists(char_file):
-            await ctx.send("Can't find your character sheet, friend.")
-            return
+        try:
+            char_file = get_character_path(ctx.author.id)
+            if not os.path.exists(char_file):
+                await ctx.send("Can't find your character sheet, friend.")
+                return
 
-        with open(char_file, 'r+') as f:
-            data = json.load(f)
-            # Restore HP to max
-            data['hit_points']['current'] = data['hit_points']['max']
-            # You can add logic here to restore hit dice, spell slots, etc.
-            
-            f.seek(0) # Rewind to the start of the file
-            json.dump(data, f, indent=4)
-            f.truncate() # Remove trailing data if the new data is shorter
+            with open(char_file, 'r+') as f:
+                data = json.load(f)
+                # Restore HP to max
+                data['hit_points']['current'] = data['hit_points']['max']
+                # You can add logic here to restore hit dice, spell slots, etc.
+                
+                f.seek(0)
+                json.dump(data, f, indent=4)
+                f.truncate()
 
-        await ctx.send(f"{ctx.author.mention} feels fully rested. All HP restored! Ready for more... snacks?")
-
+            await ctx.send(f"{ctx.author.mention} feels fully rested. All HP restored! Ready for more... snacks?")
+        except Exception as e:
+            logger.error(f"Error in long_rest command: {str(e)}")
+            await ctx.send("Oops! Something went wrong during your rest.")
 
 # This setup function is required for the cog to be loaded
 async def setup(bot):

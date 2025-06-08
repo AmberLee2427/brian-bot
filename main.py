@@ -250,8 +250,8 @@ async def on_message(message):
                 # --- Handle Secret Actions ---
                 roll_result_str = None
                 
-                # Check for @ROLL_DICE
-                roll_match = re.search(r"@ROLL_DICE='(.*?)'", final_reply_to_send)
+                # Check for @ROLL
+                roll_match = re.search(r"@ROLL='(.*?)'", final_reply_to_send)
                 if roll_match:
                     final_reply_to_send = final_reply_to_send.replace(roll_match.group(0), "").strip()
                     dice_to_roll = roll_match.group(1).strip()

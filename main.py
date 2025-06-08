@@ -291,12 +291,15 @@ async def summarize_logic(ctx, channel_name: str):
 @bot.command(name='summarize')
 async def summarize_command(ctx, channel: discord.TextChannel):
     """Summarizes the last 100 messages of a given channel."""
-    await summarize_logic(ctx, channel.name)
+    async with ctx.typing():
+        await summarize_logic(ctx, channel.name)
+
 
 @bot.command(name='recap')
 async def recap_command(ctx):
     """Provides a summary of the 'session-notes' channel."""
-    await summarize_logic(ctx, "session-notes")
+    async with ctx.typing():
+        await summarize_logic(ctx, "session-notes")
 
 # --- Error Handling ---
 @bot.event

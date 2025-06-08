@@ -38,7 +38,7 @@
     "speed": 30,
     "hit_points": {
       "max": 34,
-      "current": 19,
+      "current": 34,
       "temporary": 0
     },
     "hit_dice": {

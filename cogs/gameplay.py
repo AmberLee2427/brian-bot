@@ -11,10 +11,12 @@ logger = logging.getLogger(__name__)
 
 # --- Helper function to get a user's character file path ---
 def get_character_path(user_id):
-    # Ensure characters directory exists
-    if not os.path.exists('characters'):
-        os.makedirs('characters')
-    return f"characters/{user_id}.json"
+    # Use DATA_DIR environment variable if set, otherwise use 'characters'
+    data_dir = os.getenv('DATA_DIR', 'characters')
+    # Ensure the directory exists
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    return os.path.join(data_dir, f"{user_id}.json")
 
 def roll_dice(dice_string):
     """Rolls dice and returns the results.
@@ -42,7 +44,7 @@ def roll_dice(dice_string):
         return rolls, modifier, total
     except Exception as e:
         logger.error(f"Error rolling dice '{dice_string}': {str(e)}")
-        raise ValueError("Invalid dice format. Try '2d6+3' or '1d20'")
+        raise ValueError("Brain doesn't speak wingdings. Try '2d6+3' or '1d20'")
 
 def polish_coins(string):
     """Polish the coin string to make it easier to parse."""
@@ -171,7 +173,7 @@ class Gameplay(commands.Cog):
             return f"Okay, friend! {action} {transaction_str}. {new_balance_str}"
         except Exception as e:
             logger.error(f"Error updating coins for user {user_id}: {str(e)}")
-            raise
+            raise Exception("Oops! Brain dropped your coin purse. Sorry, friend")
 
     @commands.command(name='coin', case_insensitive=True)
     async def coin(self, ctx, *, args: str = None):
@@ -368,7 +370,7 @@ class Gameplay(commands.Cog):
         """Performs a long rest, restoring HP and half hit dice."""
         char_file = get_character_path(ctx.author.id)
         if not os.path.exists(char_file):
-            raise Exception("Can't find your character sheet.")
+            raise Exception("Can't find your character sheet. Snacks instead?")
 
         with open(char_file, 'r+') as f:
             data = json.load(f)
@@ -388,7 +390,7 @@ class Gameplay(commands.Cog):
             json.dump(data, f, indent=4)
             f.truncate()
         
-        await ctx.send(f"You feel fully rested! All HP restored. You recover {dice_to_recover} hit dice.")
+        await ctx.send(f"Wakey wakey! All {hp['max']}HP restored. You recover {dice_to_recover} hit dice. You have **{hd['spent']}** hit dice spent.")
 
     @commands.command(name='attr', aliases=['attribute', 'stat'])
     async def show_attribute(self, ctx, *, attribute_path: str = None):
@@ -461,7 +463,7 @@ class Gameplay(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error showing attribute: {str(e)}")
-            await ctx.send("Oops! Something went wrong while looking up that attribute.")
+            await ctx.send("Oops! Brain got lost while looking up that attribute.")
 
     @commands.command(name='setattr', aliases=['setattribute', 'setstat'])
     async def set_attribute(self, ctx, attribute_path: str, *, value: str):
@@ -509,7 +511,7 @@ class Gameplay(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error setting attribute: {str(e)}")
-            await ctx.send("Oops! Something went wrong while setting that attribute.")
+            await ctx.send("Oops! Brain got distracted while setting that attribute.")
 
     @commands.command(name='delattr', aliases=['delattribute', 'delstat'])
     async def delete_attribute(self, ctx, *, attribute_path: str):
@@ -518,7 +520,7 @@ class Gameplay(commands.Cog):
         """
         char_file = get_character_path(ctx.author.id)
         if not os.path.exists(char_file):
-            await ctx.send("Can't find your character sheet, friend.")
+            await ctx.send("Can't find your character sheet. How about we make a mess?")
             return
 
         try:
@@ -552,7 +554,7 @@ class Gameplay(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error deleting attribute: {str(e)}")
-            await ctx.send("Oops! Something went wrong while deleting that attribute.")
+            await ctx.send("Oops! Brain got distracted while deleting that attribute.")
 
     @commands.command(name='sheet')
     async def show_sheet(self, ctx, as_file: str = None):
@@ -593,7 +595,7 @@ class Gameplay(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error showing character sheet: {str(e)}")
-            await ctx.send("Oops! Something went wrong while showing your character sheet.")
+            await ctx.send("Oops! Brain ate your character sheet.")
 
 # This setup function is required for the cog to be loaded
 async def setup(bot):

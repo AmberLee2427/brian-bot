@@ -35,6 +35,7 @@ logger = setup_logging()
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+DATA_DIR = os.getenv('DATA_DIR', 'characters')
 
 # --- OpenAI & Bot Initialization ---
 if not OPENAI_API_KEY or not DISCORD_TOKEN:
@@ -223,7 +224,7 @@ async def on_message(message):
         async with message.channel.typing():
             # (The logic for adding character sheet context stays the same here)
             system_prompt_content = BRIAN_SYSTEM_PROMPT
-            char_file_path = f"characters/{message.author.id}.json"
+            char_file_path = f"{DATA_DIR}/{message.author.id}.json"
             if os.path.exists(char_file_path):
                 # ... (the character sheet loading logic you already have)
                 with open(char_file_path, 'r', encoding='utf-8') as f:
@@ -439,9 +440,10 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        # --- REQUIRED FIX: Removed old, redundant startup code that would cause errors ---
-        if not os.path.exists('characters'):
-            os.makedirs('characters')
+        # Create data directory if it doesn't exist
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR)
+            logger.info(f"Created data directory: {DATA_DIR}")
         
         logger.info("Starting bot...")
         asyncio.run(main())

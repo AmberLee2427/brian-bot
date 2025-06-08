@@ -13,10 +13,14 @@ logger = logging.getLogger(__name__)
 def get_character_path(user_id):
     # Use DATA_DIR environment variable if set, otherwise use 'characters'
     data_dir = os.getenv('DATA_DIR', 'characters')
+    logger.info(f"Using data directory: {data_dir}")
     # Ensure the directory exists
     if not os.path.exists(data_dir):
+        logger.info(f"Creating data directory: {data_dir}")
         os.makedirs(data_dir)
-    return os.path.join(data_dir, f"{user_id}.json")
+    file_path = os.path.join(data_dir, f"{user_id}.json")
+    logger.info(f"Character file path: {file_path}")
+    return file_path
 
 def roll_dice(dice_string):
     """Rolls dice and returns the results.
@@ -187,8 +191,10 @@ class Gameplay(commands.Cog):
             if args is None:
                 # Show status if no arguments are given
                 char_file = get_character_path(ctx.author.id)
+                logger.info(f"Checking character file: {char_file}")
                 if not os.path.exists(char_file):
                     # Create new character file with zero balance
+                    logger.info(f"Creating new character file for {ctx.author.name}")
                     initial_data = {
                         "currency": {
                             "gp": 0,
@@ -198,6 +204,7 @@ class Gameplay(commands.Cog):
                     }
                     with open(char_file, 'w') as f:
                         json.dump(initial_data, f, indent=4)
+                    logger.info(f"Created new character file with initial data")
 
                 with open(char_file, 'r') as f:
                     data = json.load(f)

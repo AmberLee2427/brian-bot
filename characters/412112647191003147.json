@@ -1,0 +1,84 @@
+{
+    "name": "Braslav Jabroski",
+    "race": "Simic Hybrid",
+    "class": {
+      "name": "Fighter",
+      "subclass": "Champion"
+    },
+    "level": 3,
+    "background": "Athlete",
+    "alignment": "Lawful Evil",
+    "ability_scores": {
+      "strength": 18,
+      "dexterity": 13,
+      "constitution": 15,
+      "intelligence": 10,
+      "wisdom": 10,
+      "charisma": 14
+    },
+    "ability_modifiers": {
+      "strength_mod": 4,
+      "dexterity_mod": 1,
+      "constitution_mod": 2,
+      "intelligence_mod": 0,
+      "wisdom_mod": 0,
+      "charisma_mod": 2
+    },
+    "proficiency_bonus": 2,
+    "saving_throws": {
+      "strength": 6,
+      "dexterity": 1,
+      "constitution": 4,
+      "intelligence": 0,
+      "wisdom": 0,
+      "charisma": 2
+    },
+    "armor_class": 18,
+    "initiative": 1,
+    "speed": 30,
+    "hit_points": {
+      "max": 34,
+      "current": 19
+    },
+    "hit_dice": "3d10",
+    "passive_perception": 12,
+    "skills": {
+      "acrobatics": { "total": 3, "proficient": true },
+      "athletics":  { "total": 6, "proficient": true },
+      "persuasion": { "total": 6, "proficient": true, "expertise": true }
+    },
+    "languages": ["Common", "Elvish"],
+    "traits": [
+      "Prehensile Tail (natural weapon; bonus-action grapple)"
+    ],
+    "features": [
+      "Improved Critical (19-20)",
+      "Action Surge ×1 per short rest",
+      "Second Wind (1d10 + 3 HP, 1/rest)",
+      "Fighting Style: Tunnel Fighter",
+      "Skill Expert feat (+1 CHA, Persuasion expertise)"
+    ],
+    "equipment": [
+      "Chain Mail",
+      "Shield",
+      "Twinblade",
+      "Light Crossbow",
+      "Dungeoneer’s Pack",
+      "Crowbar",
+      "Hammer",
+      "Pitons",
+      "Glowsticks",
+      "Tinderbox",
+      "Rations",
+      "Waterskin",
+      "50 ft. rope",
+      "Backpack"
+    ],
+    "currency": { "sp": 5, "gp": 3 },
+    "attacks": [
+      { "name": "Twinblade",       "type": "melee",           "attack_bonus": 6, "damage": "1d8+4" },
+      { "name": "Light Crossbow",  "type": "ranged 80/320",   "attack_bonus": 4, "damage": "1d8+1" },
+      { "name": "Tail Strike",     "type": "melee (natural)", "attack_bonus": 6, "damage": "1+4"   }
+    ]
+  }
+  

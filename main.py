@@ -442,6 +442,20 @@ def check_message_length(content: str) -> bool:
     """Check if a message is within Discord's length limits."""
     return len(content) <= MAX_MESSAGE_LENGTH
 
+async def main():
+    # Load Cogs
+    if not os.path.exists('cogs'):
+        os.makedirs('cogs')
+    for filename in os.listdir('./cogs'):
+        if filename.endswith('.py'):
+            try:
+                await bot.load_extension(f'cogs.{filename[:-3]}')
+                logger.info(f"Successfully loaded cog: {filename}")
+            except Exception as e:
+                logger.error(f"Failed to load cog {filename}: {e}")
+
+    await bot.start(DISCORD_TOKEN)
+
 if __name__ == "__main__":
     try:
         print("=== Starting Brian Bot ===")
@@ -462,13 +476,19 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"ERROR: Failed to initialize OpenAI client: {str(e)}")
             raise
-        
+
+        # Create characters directory if it doesn't exist
+        if not os.path.exists('characters'):
+            os.makedirs('characters')
+
         print("Starting bot...")
         try:
-            bot.run(DISCORD_TOKEN)
+            # The bot.run() is now inside the main() async function
+            asyncio.run(main())
         except Exception as e:
             print(f"ERROR: Bot failed to start: {str(e)}")
             raise
+
     except Exception as e:
         print(f"FATAL ERROR: {str(e)}")
         import traceback

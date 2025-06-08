@@ -615,7 +615,7 @@ class Gameplay(commands.Cog):
 
         attachment = ctx.message.attachments[0]
         if not attachment.filename.endswith('.json'):
-            await ctx.send("Please attach a JSON file.")
+            await ctx.send("Brain can't write. You need to give me a JSON file.")
             return
 
         try:
@@ -628,13 +628,13 @@ class Gameplay(commands.Cog):
             with open(char_file, 'w') as f:
                 json.dump(data, f, indent=4)
             
-            await ctx.send("Character sheet imported successfully! Use `!sheet` to verify.")
+            await ctx.send("Character sheet is in the bag! Use `!sheet` and I'll show you it.")
             
         except json.JSONDecodeError:
-            await ctx.send("That's not valid JSON data, friend. Make sure your file is formatted correctly.")
+            await ctx.send("That's not tasty JSON data, friend. Make sure your file is formatted all nice and tidy.")
         except Exception as e:
             logger.error(f"Error importing character sheet: {str(e)}")
-            await ctx.send("Something went wrong while importing your character sheet.")
+            await ctx.send("Something went wrong while. I might have turned it invisible and dropped it. Try again?")
 
 # This setup function is required for the cog to be loaded
 async def setup(bot):

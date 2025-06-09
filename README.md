@@ -17,7 +17,7 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
 1. **Create a Discord Bot:**
    - Go to [Discord Developer Portal](https://discord.com/developers/applications)
    - Click "New Application" and give it a name
-   - Add the `Imp_Model.png` image as Brian's profile pic
+   - Add the `Brain1.png` or `Brain2.png` image as Brian's profile pic
    - Go to the "Installation" tab and select `None` for the Install link
    - Go to the "Bot" tab and turn of the "PUBLIC BOT" toggle
    - Under "Privileged Gateway Intents", enable:

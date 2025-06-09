@@ -246,3 +246,24 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - OpenAI for the GPT API
 - Discord.py for the Discord API wrapper
 - All contributors who have helped improve Brian
+
+## Release Notes
+
+Initial release of Brian Bot, a Discord bot for D&D servers with the following features:
+
+- Natural language conversations with OpenAI integration
+- Character sheet management
+- Dice rolling
+- Channel summarization
+- Message search
+- Session notes tracking
+- Rate limiting and security features
+
+Key Features:
+- Default character sheet template
+- Persistent storage support
+- Configurable through environment variables
+- Railway deployment support
+- Comprehensive documentation
+
+This is the first stable release of Brian Bot. All features are fully functional and documented.

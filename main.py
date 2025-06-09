@@ -297,8 +297,8 @@ async def on_message(message):
 
                 # --- Send the final message ---
                 if final_reply_to_send:
-                    # Strip "Brain: " from the beginning of the response if it exists
-                    final_reply_to_send = re.sub(r'^Brain:\s*', '', final_reply_to_send)
+                    # Strip bot name prefix from the beginning of the response if it exists
+                    final_reply_to_send = re.sub(r'^(?:Brain|Brian):\s*', '', final_reply_to_send, flags=re.IGNORECASE)
                     await message.reply(final_reply_to_send)
 
                 # If there was a roll, send it as a follow-up message

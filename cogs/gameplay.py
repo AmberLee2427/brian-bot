@@ -22,6 +22,23 @@ def get_character_path(user_id):
     logger.info(f"Character file path: {file_path}")
     return file_path
 
+def create_default_character_sheet(user_id: int) -> None:
+    """Creates a default character sheet for a new user."""
+    try:
+        # Read the default template
+        with open('default_character_sheet.json', 'r') as f:
+            default_sheet = json.load(f)
+        
+        # Save it as the user's character sheet
+        char_file = get_character_path(user_id)
+        with open(char_file, 'w') as f:
+            json.dump(default_sheet, f, indent=4)
+        
+        logger.info(f"Created default character sheet for user {user_id}")
+    except Exception as e:
+        logger.error(f"Error creating default character sheet: {str(e)}")
+        raise
+
 def roll_dice(dice_string):
     """Rolls dice and returns the results.
     Format: "2d6+3" or "1d20"
@@ -193,18 +210,10 @@ class Gameplay(commands.Cog):
                 char_file = get_character_path(ctx.author.id)
                 logger.info(f"Checking character file: {char_file}")
                 if not os.path.exists(char_file):
-                    # Create new character file with zero balance
+                    # Create new character file with default template
                     logger.info(f"Creating new character file for {ctx.author.name}")
-                    initial_data = {
-                        "currency": {
-                            "gp": 0,
-                            "sp": 0,
-                            "cp": 0
-                        }
-                    }
-                    with open(char_file, 'w') as f:
-                        json.dump(initial_data, f, indent=4)
-                    logger.info(f"Created new character file with initial data")
+                    create_default_character_sheet(ctx.author.id)
+                    logger.info(f"Created new character file with default template")
 
                 with open(char_file, 'r') as f:
                     data = json.load(f)

@@ -1,0 +1,88 @@
+{
+    "name": "New Character",
+    "class": "Adventurer",
+    "level": 1,
+    "race": "Human",
+    "background": "Adventurer",
+    "alignment": "Neutral",
+    "experience_points": 0,
+    "hit_points": {
+        "current": 10,
+        "max": 10,
+        "temporary": 0
+    },
+    "hit_dice": {
+        "total": 1,
+        "spent": 0,
+        "die_type": "d8"
+    },
+    "ability_scores": {
+        "strength": 10,
+        "dexterity": 10,
+        "constitution": 10,
+        "intelligence": 10,
+        "wisdom": 10,
+        "charisma": 10
+    },
+    "ability_modifiers": {
+        "strength_mod": 0,
+        "dexterity_mod": 0,
+        "constitution_mod": 0,
+        "intelligence_mod": 0,
+        "wisdom_mod": 0,
+        "charisma_mod": 0
+    },
+    "proficiency_bonus": 2,
+    "saving_throws": {
+        "strength": false,
+        "dexterity": false,
+        "constitution": false,
+        "intelligence": false,
+        "wisdom": false,
+        "charisma": false
+    },
+    "skills": {
+        "acrobatics": 0,
+        "animal_handling": 0,
+        "arcana": 0,
+        "athletics": 0,
+        "deception": 0,
+        "history": 0,
+        "insight": 0,
+        "intimidation": 0,
+        "investigation": 0,
+        "medicine": 0,
+        "nature": 0,
+        "perception": 0,
+        "performance": 0,
+        "persuasion": 0,
+        "religion": 0,
+        "sleight_of_hand": 0,
+        "stealth": 0,
+        "survival": 0
+    },
+    "armor_class": 10,
+    "initiative": 0,
+    "speed": 30,
+    "currency": {
+        "gp": 0,
+        "sp": 0,
+        "cp": 0
+    },
+    "equipment": [],
+    "weapons": [],
+    "armor": [],
+    "features_and_traits": [],
+    "proficiencies": {
+        "armor": [],
+        "weapons": [],
+        "tools": [],
+        "languages": ["Common"]
+    },
+    "spellcasting": {
+        "spellcasting_ability": "",
+        "spell_save_dc": 0,
+        "spell_attack_bonus": 0,
+        "spells": []
+    }
+} 

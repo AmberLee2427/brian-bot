@@ -14,7 +14,7 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 import string
 from openai import OpenAI # Make sure to add this at the top with other imports
-from cogs.gameplay import roll_dice
+from cogs.gameplay import roll_dice, create_default_character_sheet
 
 
 # --- Logging Setup ---
@@ -36,6 +36,24 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 DATA_DIR = os.getenv('DATA_DIR', 'characters')
+SESSION_NOTES_CHANNEL = os.getenv('SESSION_NOTES_CHANNEL', 'session-notes')
+COMMAND_PREFIX = os.getenv('COMMAND_PREFIX', '!')
+MODEL_NAME = os.getenv('MODEL_NAME', 'gpt-4')
+MAX_TOKENS_FOR_RESPONSE = int(os.getenv('MAX_TOKENS_FOR_RESPONSE', '1500'))
+RATE_LIMIT_MENTIONS = int(os.getenv('RATE_LIMIT_MENTIONS', '5'))
+RATE_LIMIT_COMMANDS = int(os.getenv('RATE_LIMIT_COMMANDS', '10'))
+RATE_LIMIT_WINDOW = int(os.getenv('RATE_LIMIT_WINDOW', '60'))  # in seconds
+
+def parse_id_list(env_var: str) -> list:
+    """Parse a comma-separated list of IDs from an environment variable."""
+    if not env_var:
+        return []
+    return [int(id_str.strip()) for id_str in env_var.split(',') if id_str.strip()]
+
+# Parse role and channel IDs from environment variables
+SEARCHABLE_CHANNEL_IDS = parse_id_list(os.getenv('SEARCHABLE_CHANNEL_IDS', ''))
+ALLOWED_ROLES = parse_id_list(os.getenv('ALLOWED_ROLES', ''))
+ADMIN_ROLES = parse_id_list(os.getenv('ADMIN_ROLES', ''))
 
 # --- OpenAI & Bot Initialization ---
 if not OPENAI_API_KEY or not DISCORD_TOKEN:
@@ -55,17 +73,11 @@ intents.messages = True
 intents.message_content = True
 intents.guilds = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 
 # --- Configuration & Global State ---
 BRIAN_SYSTEM_PROMPT = ""
 INSTRUCTIONS_FILE_NAME = "brian_instructions.txt"
-MODEL_NAME = "gpt-4"
-MAX_TOKENS_FOR_RESPONSE = 1500
-
-# Security settings
-ALLOWED_ROLES = []  # Add role IDs that are allowed to use certain commands
-ADMIN_ROLES = []    # Add role IDs that have admin privileges
 
 # --- Rate Limiting Setup ---
 class RateLimiter:
@@ -90,8 +102,8 @@ class RateLimiter:
         return False
 
 # Initialize rate limiters
-mention_limiter = RateLimiter(max_requests=5, time_window=60)  # 5 requests per minute
-command_limiter = RateLimiter(max_requests=10, time_window=60)  # 10 commands per minute
+mention_limiter = RateLimiter(max_requests=RATE_LIMIT_MENTIONS, time_window=RATE_LIMIT_WINDOW)
+command_limiter = RateLimiter(max_requests=RATE_LIMIT_COMMANDS, time_window=RATE_LIMIT_WINDOW)
 
 # --- Input Validation ---
 def sanitize_input(text: str) -> str:
@@ -136,14 +148,6 @@ def validate_api_key(api_key: str) -> bool:
     if len(api_key) >= 59:  # Discord tokens are typically 59+ characters
         return True
     return False
-
-# Channels for the !find command
-SEARCHABLE_CHANNEL_IDS = [
-    # ADD YOUR CHANNEL IDS HERE
-    # 123456789012345678, # example-channel-1
-    # 876543210987654321, # example-channel-2
-]
-
 
 # --- Helper Functions ---
 def perform_roll(dice_string: str):
@@ -222,11 +226,20 @@ async def on_message(message):
             return
 
         async with message.channel.typing():
-            # (The logic for adding character sheet context stays the same here)
-            system_prompt_content = BRIAN_SYSTEM_PROMPT
+            # Create default character sheet if it doesn't exist
             char_file_path = f"{DATA_DIR}/{message.author.id}.json"
+            if not os.path.exists(char_file_path):
+                try:
+                    create_default_character_sheet(message.author.id)
+                    await message.channel.send("I've created a default character sheet for you! Use `!sheet` to view it or `!sheet file` to download it as a template.")
+                except Exception as e:
+                    logger.error(f"Error creating default character sheet: {str(e)}")
+                    await message.channel.send("I had trouble creating your character sheet. Please try again later.")
+                    return
+
+            # Load character sheet for context
+            system_prompt_content = BRIAN_SYSTEM_PROMPT
             if os.path.exists(char_file_path):
-                # ... (the character sheet loading logic you already have)
                 with open(char_file_path, 'r', encoding='utf-8') as f:
                     character_data = json.load(f)
                 character_json_string = json.dumps(character_data, indent=2)
@@ -401,9 +414,8 @@ async def summarize_command(ctx, channel: discord.TextChannel):
 
 @bot.command(name='recap')
 async def recap_command(ctx):
-    """Provides a summary of the 'session-notes' channel."""
-    async with ctx.typing():
-        await summarize_logic(ctx, "session-notes")
+    """Provides a summary of the session notes channel."""
+    await summarize_logic(ctx, SESSION_NOTES_CHANNEL)
 
 
 @bot.event

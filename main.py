@@ -39,6 +39,7 @@ DATA_DIR = os.getenv('DATA_DIR', 'characters')
 SESSION_NOTES_CHANNEL = os.getenv('SESSION_NOTES_CHANNEL', 'session-notes')
 COMMAND_PREFIX = os.getenv('COMMAND_PREFIX', '!')
 MODEL_NAME = os.getenv('MODEL_NAME', 'gpt-4')
+BOT_NAME = os.getenv('BOT_NAME', 'Brian')
 MAX_TOKENS_FOR_RESPONSE = int(os.getenv('MAX_TOKENS_FOR_RESPONSE', '1500'))
 RATE_LIMIT_MENTIONS = int(os.getenv('RATE_LIMIT_MENTIONS', '5'))
 RATE_LIMIT_COMMANDS = int(os.getenv('RATE_LIMIT_COMMANDS', '10'))
@@ -156,10 +157,10 @@ def perform_roll(dice_string: str):
         rolls, modifier, total = roll_dice(dice_string)
         
         mod_str = f" + {modifier}" if modifier > 0 else f" - {abs(modifier)}" if modifier < 0 else ""
-        return f"Brian rolls `{dice_string}`...\n**Result:** `{rolls}`{mod_str} = **{total}**"
+        return f"{BOT_NAME} rolls `{dice_string}`...\n**Result:** `{rolls}`{mod_str} = **{total}**"
 
     except Exception:
-        return f"Brian confused by `{dice_string}`. Is not good dice."
+        return f"{BOT_NAME} confused by `{dice_string}`. Is not good dice."
 
 
 # --- Bot Events ---
@@ -180,14 +181,16 @@ async def on_ready():
                 raise FileNotFoundError(f"File not found: {INSTRUCTIONS_FILE_NAME}")
             
             with open(INSTRUCTIONS_FILE_NAME, 'r', encoding='utf-8') as f:
-                BRIAN_SYSTEM_PROMPT = f.read()
+                instructions = f.read()
+                # Format the instructions with the bot's name
+                BRIAN_SYSTEM_PROMPT = instructions.format(BOT_NAME=BOT_NAME)
             logger.info(f"Successfully loaded instructions from '{INSTRUCTIONS_FILE_NAME}'")
         except Exception as e:
             logger.error(f"FATAL: Error reading '{INSTRUCTIONS_FILE_NAME}': {str(e)}")
             raise
         
         logger.info("=== Bot is ready to receive messages ===")
-        print(f"Logged in as {bot.user}. Brian is operational.")
+        print(f"Logged in as {bot.user}. {BOT_NAME} is operational.")
     except Exception as e:
         logger.error(f"FATAL ERROR in on_ready: {str(e)}", exc_info=True)
         raise

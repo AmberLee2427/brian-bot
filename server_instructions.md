@@ -1,20 +1,20 @@
-# How to Use Brian Bot
+# How to Use {BOT_NAME} Bot
 
-Brian is your loyal, if chaotic, imp sidekick. He can help you manage your character sheet, roll dice, and recall information. Here's how to command him.
+{BOT_NAME} is your loyal, if chaotic, imp sidekick. They can help you manage your character sheet, roll dice, and recall information. Here's how to command them.
 
-## Talking to Brian
+## Talking to {BOT_NAME}
 
-To have a natural conversation, just mention him in a message.
+To have a natural conversation, just mention them in a message.
 
-* `@Brian how much gold do I have?`
-* `@Brian what's my armor class?`
-* `@Brian make a strength check for me`
+* `@{BOT_NAME} how much gold do I have?`
+* `@{BOT_NAME} what's my armor class?`
+* `@{BOT_NAME} make a strength check for me`
 
-He'll read your character sheet to answer questions and can even roll dice for you if you ask him to.
+They'll read your character sheet to answer questions and can even roll dice for you if you ask them to.
 
 ## Core Commands
 
-These are direct commands that Brian will obey instantly.
+These are direct commands that {BOT_NAME} will obey instantly.
 
 ### Character Sheet Management
 * `!sheet`: Shows your full character sheet in a series of messages.
@@ -24,7 +24,7 @@ These are direct commands that Brian will obey instantly.
 ### Health and HP
 * `!hp`: Shows your current, max, and temporary HP.
 * `!hp 10`: Heals you for 10 HP.
-* `!hp -5`: Deals 5 damage to you. Brian will automatically subtract from temporary HP first.
+* `!hp -5`: Deals 5 damage to you. {BOT_NAME} will automatically subtract from temporary HP first.
 * `!temphp 20`: Gives you 20 temporary HP. Note: New temp HP only applies if it's higher than your current temp HP.
 
 ### Resting and Recovery
@@ -35,11 +35,11 @@ These are direct commands that Brian will obey instantly.
 ### Currency Management
 * `!coin`: Shows a summary of your coin purse (GP, SP, CP).
 * `!coin 50gp`: Adds 50 gold.
-* `!coin -10sp`: Subtracts 10 silver. Brian will automatically make change from higher-value coins if needed.
+* `!coin -10sp`: Subtracts 10 silver. {BOT_NAME} will automatically make change from higher-value coins if needed.
 
 ### Dice Rolling
 * `!roll <dice>`: Rolls dice using standard notation (e.g., `!roll 2d6+3`).
-* You can also put the roll command anywhere in your message, and Brian will find it: `I attack the goblin! !roll 1d20+5`
+* You can also put the roll command anywhere in your message, and {BOT_NAME} will find it: `I attack the goblin! !roll 1d20+5`
 
 ### Advanced Attribute Management
 These commands use dot notation to access any value on your character sheet.

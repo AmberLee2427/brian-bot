@@ -81,6 +81,7 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
    RATE_LIMIT_MENTIONS=5  # Default: 5 mentions per minute
    RATE_LIMIT_COMMANDS=10  # Default: 10 commands per minute
    RATE_LIMIT_WINDOW=60  # Default: 60 seconds
+   BOT_NAME=your_bot_name  # Optional, defaults to "Brian"
    
    # Channel and Role Configuration
    SEARCHABLE_CHANNEL_IDS=123456789012345678,876543210987654321  # Comma-separated list of channel IDs for !find command
@@ -155,8 +156,7 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
      - Channel and Role Configuration:
        - `SEARCHABLE_CHANNEL_IDS`: Comma-separated list of channel IDs for the !find command
        - `ALLOWED_ROLES`: Comma-separated list of role IDs that can use restricted commands
-       - `ADMIN_ROLES`: Comma-separated list of role IDs with admin privileges
-     - Secure the Token and API Key variables by selecting the triple dot and `Seal`, if the option is available.
+       - `ADMIN_ROLES`: Comma-separated list of role IDs with admin privileges     - Secure the Token and API Key variables by selecting the triple dot and `Seal`, if the option is available.
 
 4. **Configure the Bot:**
    - The bot will automatically deploy when you push to the main branch (this could take a few minutes)
@@ -275,3 +275,4 @@ Key Features:
 - Comprehensive documentation
 
 This is the first stable release of Brian Bot. All features are fully functional and documented.
+

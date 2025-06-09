@@ -1,4 +1,4 @@
-![A cute imp wearing a nametag that says "Brian"](Brian1.png)
+<img src="Brian1.png" alt="A cute imp wearing a nametag that says \"Brian\"" width="100">
 
 # Brian Bot
 

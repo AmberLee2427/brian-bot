@@ -1,8 +1,8 @@
-<img src="Brian1.png" alt="A cute imp wearing a nametag that says \"Brian\"" width="100">
-
 # Brian Bot
 
 A helpful Discord assistant built with Python and OpenAI. Brian is designed to be a secure, efficient, and friendly bot that can help manage and interact with your Discord server.
+
+![A cute imp wearing a nametag that says "Brian"](Brian1.png)
 
 ## Features
 

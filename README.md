@@ -46,13 +46,24 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
 
 ### Local Development
 
-1. **Clone the Repository:**
+1. **Fork and Clone the Repository:**
+   Fork this repository to your GitHub account by clicking the "Fork" button at the top of the page.
+   
+   Clone the repo locally:
    ```bash
    git clone https://github.com/yourusername/brian-bot.git
    cd brian-bot
    ```
+   We recommend you "Watch" the repo in order to be notified of updates
+     - Click the "Watch" button at the top of the repository
+     - Select "Custom" to configure notifications
+     - Enable notifications for:
+       - "Releases" (when new versions are published)
+       - "Discussions" (for community support)
+       - "Security alerts" (for important security updates)
+     - Click "Apply" to save your preferences
 
-2. **Create a `.env` file:**
+3. **Create a `.env` file:**
    In the same directory, create a file named `.env` and add your secret keys:
    ```
    # Required
@@ -81,12 +92,12 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
    ```
    This ensures only your user can read and write to the file.
 
-3. **Install Dependencies:**
+4. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Run the Bot:**
+5. **Run the Bot:**
    ```bash
    python main.py
    ```
@@ -100,11 +111,6 @@ A helpful Discord assistant built with Python and OpenAI. Brian is designed to b
 
 2. **Fork and Clone:**
    - Fork this repository to your GitHub account by clicking the "Fork" button at the top of the page
-   - Clone your fork to your local machine:
-     ```bash
-     git clone https://github.com/your-username/brian-bot.git
-     cd brian-bot
-     ```
    - We recommend you "Watch" the repo in order to be notified of updates
      - Click the "Watch" button at the top of the repository
      - Select "Custom" to configure notifications

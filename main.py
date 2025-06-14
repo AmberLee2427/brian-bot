@@ -15,7 +15,18 @@ from datetime import datetime, timedelta
 import string
 from openai import OpenAI # Make sure to add this at the top with other imports
 from cogs.gameplay import roll_dice, create_default_character_sheet
+from flask import Flask
+from threading import Thread
 
+# --- Keeping Brian Alive ---
+@app.route('/')
+def health_check():
+    return "Brian's heart is beating. He's alive!", 200
+
+def run_flask():
+    # Railway/Heroku will provide the port, otherwise default to 8080
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
 
 # --- Logging Setup ---
 def setup_logging():
@@ -458,6 +469,14 @@ if __name__ == "__main__":
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
             logger.info(f"Created data directory: {DATA_DIR}")
+
+        # --- ADD THIS PART ---
+        # Start the Flask server in a background thread to keep the bot alive
+        flask_thread = Thread(target=run_flask)
+        flask_thread.daemon = True
+        flask_thread.start()
+        logger.info("Health check server started in background thread.")
+        # --- END OF ADDED PART ---
         
         logger.info("Starting bot...")
         asyncio.run(main())

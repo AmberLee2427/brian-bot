@@ -19,6 +19,8 @@ from flask import Flask
 from threading import Thread
 
 # --- Keeping Brian Alive ---
+app = Flask('')
+
 @app.route('/')
 def health_check():
     return "Brian's heart is beating. He's alive!", 200

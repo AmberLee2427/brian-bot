@@ -75,7 +75,7 @@ if not OPENAI_API_KEY or not DISCORD_TOKEN:
 
 try:
     logger.info("Initializing OpenAI client...")
-    client = OpenAI(api_key=OPENAI_API_KEY, timeout=30)
+    openai_client = OpenAI(api_key=OPENAI_API_KEY, timeout=30)
     logger.info("OpenAI client initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize OpenAI client: {str(e)}")
@@ -269,7 +269,7 @@ async def on_message(message):
             payload = [{"role": "system", "content": system_prompt_content}, *history_messages]
             
             try:
-                response = client.chat.completions.create(
+                response = openai_client.chat.completions.create(
                     model=MODEL_NAME, messages=payload, max_tokens=MAX_TOKENS_FOR_RESPONSE, temperature=0.7
                 )
                 final_reply_to_send = response.choices[0].message.content
@@ -400,7 +400,7 @@ async def summarize_logic(ctx, channel_name: str):
         
         try:
             # --- REQUIRED FIX: Using the correct new client for the API call ---
-            response = client.chat.completions.create(
+            response = openai_client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=[{"role": "system", "content": "You are a summarization expert."}, {"role": "user", "content": prompt}],
                 max_tokens=500,

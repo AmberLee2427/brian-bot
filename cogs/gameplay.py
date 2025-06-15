@@ -25,19 +25,30 @@ def get_character_path(user_id):
 def create_default_character_sheet(user_id: int) -> None:
     """Creates a default character sheet for a new user."""
     try:
-        # Read the default template
-        with open('default_character_sheet.json', 'r') as f:
+        # --- NEW: Build an absolute path to the template file ---
+        # This finds the directory the script is in (cogs)
+        script_dir = os.path.dirname(__file__)
+        # This goes up one level to the main project folder
+        project_root = os.path.abspath(os.path.join(script_dir, os.pardir))
+        # This creates a reliable path to the template
+        template_path = os.path.join(project_root, 'default_character_sheet.json')
+        
+        logger.info(f"Attempting to load template from: {template_path}")
+
+        # Read the default template from the reliable path
+        with open(template_path, 'r') as f:
             default_sheet = json.load(f)
         
-        # Save it as the user's character sheet
+        # Save it as the user's character sheet in the correct data directory
         char_file = get_character_path(user_id)
         with open(char_file, 'w') as f:
             json.dump(default_sheet, f, indent=4)
         
-        logger.info(f"Created default character sheet for user {user_id}")
+        logger.info(f"Created default character sheet for user {user_id} at {char_file}")
+    except FileNotFoundError:
+        logger.error(f"CRITICAL: The template file 'default_character_sheet.json' was not found at {template_path}. Make sure it is in the project's root directory and has been pushed to GitHub.")
     except Exception as e:
         logger.error(f"Error creating default character sheet: {str(e)}")
-        raise
 
 def roll_dice(dice_string):
     """Rolls dice and returns the results.

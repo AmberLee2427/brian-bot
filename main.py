@@ -466,6 +466,14 @@ async def main():
     await bot.start(DISCORD_TOKEN)
 
 if __name__ == "__main__":
+    # --- TEMPORARY DEBUGGING ---
+    print("--- ENVIRONMENT SANITY CHECK ---")
+    print(f"DISCORD_TOKEN Loaded: {bool(DISCORD_TOKEN)}")
+    print(f"OPENAI_API_KEY Loaded: {bool(OPENAI_API_KEY)}")
+    print(f"DATA_DIR Value: {os.getenv('DATA_DIR', 'Not Set')}")
+    print("------------------------------")
+    # --- END DEBUGGING ---
+
     try:
         # Create data directory if it doesn't exist
         if not os.path.exists(DATA_DIR):
